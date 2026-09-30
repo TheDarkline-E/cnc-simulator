@@ -1,0 +1,8 @@
+cad_files/
+.git/
+node_modules/
+dist/
+.vercel/
+*.STEP
+*.step
+*.stp
