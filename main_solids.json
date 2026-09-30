@@ -1,0 +1,842 @@
+[
+  {
+    "solid_index": 0,
+    "tag": 1,
+    "name": "",
+    "bbox_min": [
+      1059.34,
+      998.24,
+      1431.01
+    ],
+    "bbox_max": [
+      1167.34,
+      1048.24,
+      2127.01
+    ],
+    "dimensions": [
+      108.0,
+      50.0,
+      696.0
+    ],
+    "volume": 925296.0
+  },
+  {
+    "solid_index": 1,
+    "tag": 2,
+    "name": "",
+    "bbox_min": [
+      467.34,
+      998.24,
+      1479.01
+    ],
+    "bbox_max": [
+      517.34,
+      1048.24,
+      2079.01
+    ],
+    "dimensions": [
+      50.0,
+      50.0,
+      600.0
+    ],
+    "volume": 308400.0
+  },
+  {
+    "solid_index": 2,
+    "tag": 3,
+    "name": "",
+    "bbox_min": [
+      469.23,
+      1000.24,
+      1431.01
+    ],
+    "bbox_max": [
+      515.34,
+      1046.24,
+      1537.01
+    ],
+    "dimensions": [
+      46.11,
+      46.0,
+      106.0
+    ],
+    "volume": 195148.58
+  },
+  {
+    "solid_index": 3,
+    "tag": 4,
+    "name": "",
+    "bbox_min": [
+      469.23,
+      1000.24,
+      2019.01
+    ],
+    "bbox_max": [
+      515.34,
+      1046.24,
+      2127.01
+    ],
+    "dimensions": [
+      46.11,
+      46.0,
+      108.0
+    ],
+    "volume": 198830.63
+  },
+  {
+    "solid_index": 4,
+    "tag": 5,
+    "name": "",
+    "bbox_min": [
+      517.34,
+      985.24,
+      1479.01
+    ],
+    "bbox_max": [
+      1117.34,
+      1000.24,
+      2079.01
+    ],
+    "dimensions": [
+      600.0,
+      15.0,
+      600.0
+    ],
+    "volume": 1056908.0
+  },
+  {
+    "solid_index": 5,
+    "tag": 6,
+    "name": "",
+    "bbox_min": [
+      485.23,
+      900.24,
+      2095.01
+    ],
+    "bbox_max": [
+      501.23,
+      1000.24,
+      2111.01
+    ],
+    "dimensions": [
+      16.0,
+      100.0,
+      16.0
+    ],
+    "volume": 20106.19
+  },
+  {
+    "solid_index": 6,
+    "tag": 7,
+    "name": "",
+    "bbox_min": [
+      485.23,
+      900.24,
+      1447.01
+    ],
+    "bbox_max": [
+      501.23,
+      1000.24,
+      1463.01
+    ],
+    "dimensions": [
+      16.0,
+      100.0,
+      16.0
+    ],
+    "volume": 20106.19
+  },
+  {
+    "solid_index": 7,
+    "tag": 8,
+    "name": "",
+    "bbox_min": [
+      1133.44,
+      900.24,
+      1447.01
+    ],
+    "bbox_max": [
+      1149.44,
+      1000.24,
+      1463.01
+    ],
+    "dimensions": [
+      16.0,
+      100.0,
+      16.0
+    ],
+    "volume": 20106.19
+  },
+  {
+    "solid_index": 8,
+    "tag": 9,
+    "name": "",
+    "bbox_min": [
+      1133.44,
+      900.24,
+      2095.01
+    ],
+    "bbox_max": [
+      1149.44,
+      1000.24,
+      2111.01
+    ],
+    "dimensions": [
+      16.0,
+      100.0,
+      16.0
+    ],
+    "volume": 20106.19
+  },
+  {
+    "solid_index": 9,
+    "tag": 10,
+    "name": "",
+    "bbox_min": [
+      808.34,
+      1014.24,
+      1479.01
+    ],
+    "bbox_max": [
+      826.34,
+      1032.24,
+      1494.01
+    ],
+    "dimensions": [
+      18.0,
+      18.0,
+      15.0
+    ],
+    "volume": 801.11
+  },
+  {
+    "solid_index": 10,
+    "tag": 11,
+    "name": "",
+    "bbox_min": [
+      467.33,
+      1048.24,
+      1701.05
+    ],
+    "bbox_max": [
+      1167.34,
+      1648.24,
+      1856.98
+    ],
+    "dimensions": [
+      700.01,
+      600.01,
+      155.93
+    ],
+    "volume": 1217608.25
+  },
+  {
+    "solid_index": 11,
+    "tag": 12,
+    "name": "",
+    "bbox_min": [
+      319.23,
+      998.24,
+      1427.01
+    ],
+    "bbox_max": [
+      1169.44,
+      1848.24,
+      2129.01
+    ],
+    "dimensions": [
+      850.22,
+      850.0,
+      702.0
+    ],
+    "volume": 6759405.06
+  },
+  {
+    "solid_index": 12,
+    "tag": 13,
+    "name": "Shapes/main/NAUO2/lead screw",
+    "bbox_min": [
+      481.73,
+      1050.32,
+      1820.51
+    ],
+    "bbox_max": [
+      502.94,
+      1660.32,
+      1843.44
+    ],
+    "dimensions": [
+      21.21,
+      610.0,
+      22.94
+    ],
+    "volume": 154028.79
+  },
+  {
+    "solid_index": 13,
+    "tag": 14,
+    "name": "Shapes/main/NAUO3/lead screw",
+    "bbox_min": [
+      1131.73,
+      1050.32,
+      1820.51
+    ],
+    "bbox_max": [
+      1152.94,
+      1660.32,
+      1843.44
+    ],
+    "dimensions": [
+      21.21,
+      610.0,
+      22.94
+    ],
+    "volume": 154028.79
+  },
+  {
+    "solid_index": 14,
+    "tag": 15,
+    "name": "Shapes/main/NAUO4/y axis/NAUO22/y frame",
+    "bbox_min": [
+      467.34,
+      1543.24,
+      1806.97
+    ],
+    "bbox_max": [
+      1167.34,
+      1593.24,
+      1909.97
+    ],
+    "dimensions": [
+      700.0,
+      50.0,
+      103.0
+    ],
+    "volume": 467788.44
+  },
+  {
+    "solid_index": 15,
+    "tag": 16,
+    "name": "Shapes/main/NAUO4/y axis/NAUO23/nut",
+    "bbox_min": [
+      1129.84,
+      1540.91,
+      1819.47
+    ],
+    "bbox_max": [
+      1154.84,
+      1595.24,
+      1844.48
+    ],
+    "dimensions": [
+      25.0,
+      54.33,
+      25.0
+    ],
+    "volume": 11666.64
+  },
+  {
+    "solid_index": 16,
+    "tag": 17,
+    "name": "Shapes/main/NAUO4/y axis/NAUO24/nut",
+    "bbox_min": [
+      479.84,
+      1540.91,
+      1819.47
+    ],
+    "bbox_max": [
+      504.84,
+      1595.24,
+      1844.48
+    ],
+    "dimensions": [
+      25.0,
+      54.33,
+      25.0
+    ],
+    "volume": 11666.64
+  },
+  {
+    "solid_index": 17,
+    "tag": 18,
+    "name": "Shapes/main/NAUO4/y axis/NAUO25/lead screw y",
+    "bbox_min": [
+      455.26,
+      1558.24,
+      1873.43
+    ],
+    "bbox_max": [
+      1165.26,
+      1578.24,
+      1896.52
+    ],
+    "dimensions": [
+      710.0,
+      20.0,
+      23.09
+    ],
+    "volume": 179453.56
+  },
+  {
+    "solid_index": 18,
+    "tag": 19,
+    "name": "Shapes/main/NAUO5/lead screw2",
+    "bbox_min": [
+      805.79,
+      1013.24,
+      1389.01
+    ],
+    "bbox_max": [
+      828.88,
+      1033.24,
+      2079.01
+    ],
+    "dimensions": [
+      23.09,
+      20.0,
+      690.0
+    ],
+    "volume": 170106.18
+  },
+  {
+    "solid_index": 19,
+    "tag": 20,
+    "name": "Shapes/main/NAUO6/111",
+    "bbox_min": [
+      664.91,
+      1011.74,
+      1484.01
+    ],
+    "bbox_max": [
+      964.91,
+      1063.24,
+      1684.01
+    ],
+    "dimensions": [
+      300.0,
+      51.5,
+      200.0
+    ],
+    "volume": 1152407.53
+  },
+  {
+    "solid_index": 20,
+    "tag": 21,
+    "name": "Shapes/main/NAUO7/lead screw",
+    "bbox_min": [
+      481.73,
+      1050.32,
+      1714.51
+    ],
+    "bbox_max": [
+      502.94,
+      1660.32,
+      1737.44
+    ],
+    "dimensions": [
+      21.21,
+      610.0,
+      22.94
+    ],
+    "volume": 154028.79
+  },
+  {
+    "solid_index": 21,
+    "tag": 22,
+    "name": "Shapes/main/NAUO8/lead screw",
+    "bbox_min": [
+      1131.73,
+      1050.32,
+      1714.51
+    ],
+    "bbox_max": [
+      1152.94,
+      1660.32,
+      1737.44
+    ],
+    "dimensions": [
+      21.21,
+      610.0,
+      22.94
+    ],
+    "volume": 154028.79
+  },
+  {
+    "solid_index": 22,
+    "tag": 23,
+    "name": "Shapes/main/NAUO9/y axis/NAUO22/y frame",
+    "bbox_min": [
+      467.34,
+      1543.24,
+      1647.97
+    ],
+    "bbox_max": [
+      1167.34,
+      1593.24,
+      1750.97
+    ],
+    "dimensions": [
+      700.0,
+      50.0,
+      103.0
+    ],
+    "volume": 467788.44
+  },
+  {
+    "solid_index": 23,
+    "tag": 24,
+    "name": "Shapes/main/NAUO9/y axis/NAUO23/nut",
+    "bbox_min": [
+      1129.84,
+      1541.24,
+      1713.47
+    ],
+    "bbox_max": [
+      1154.84,
+      1595.57,
+      1738.48
+    ],
+    "dimensions": [
+      25.0,
+      54.33,
+      25.0
+    ],
+    "volume": 11666.64
+  },
+  {
+    "solid_index": 24,
+    "tag": 25,
+    "name": "Shapes/main/NAUO9/y axis/NAUO24/nut",
+    "bbox_min": [
+      479.84,
+      1541.24,
+      1713.47
+    ],
+    "bbox_max": [
+      504.84,
+      1595.57,
+      1738.48
+    ],
+    "dimensions": [
+      25.0,
+      54.33,
+      25.0
+    ],
+    "volume": 11666.64
+  },
+  {
+    "solid_index": 25,
+    "tag": 26,
+    "name": "Shapes/main/NAUO9/y axis/NAUO25/lead screw y",
+    "bbox_min": [
+      455.26,
+      1558.24,
+      1661.43
+    ],
+    "bbox_max": [
+      1165.26,
+      1578.24,
+      1684.52
+    ],
+    "dimensions": [
+      710.0,
+      20.0,
+      23.09
+    ],
+    "volume": 179453.56
+  },
+  {
+    "solid_index": 26,
+    "tag": 27,
+    "name": "Shapes/main/NAUO10/y axis/NAUO22/y frame",
+    "bbox_min": [
+      467.34,
+      1543.24,
+      1647.97
+    ],
+    "bbox_max": [
+      1167.34,
+      1593.24,
+      1750.97
+    ],
+    "dimensions": [
+      700.0,
+      50.0,
+      103.0
+    ],
+    "volume": 467788.44
+  },
+  {
+    "solid_index": 27,
+    "tag": 28,
+    "name": "Shapes/main/NAUO10/y axis/NAUO23/nut",
+    "bbox_min": [
+      1129.84,
+      1541.24,
+      1713.47
+    ],
+    "bbox_max": [
+      1154.84,
+      1595.57,
+      1738.48
+    ],
+    "dimensions": [
+      25.0,
+      54.33,
+      25.0
+    ],
+    "volume": 11666.64
+  },
+  {
+    "solid_index": 28,
+    "tag": 29,
+    "name": "Shapes/main/NAUO10/y axis/NAUO24/nut",
+    "bbox_min": [
+      479.84,
+      1541.24,
+      1713.47
+    ],
+    "bbox_max": [
+      504.84,
+      1595.57,
+      1738.48
+    ],
+    "dimensions": [
+      25.0,
+      54.33,
+      25.0
+    ],
+    "volume": 11666.64
+  },
+  {
+    "solid_index": 29,
+    "tag": 30,
+    "name": "Shapes/main/NAUO10/y axis/NAUO25/lead screw y",
+    "bbox_min": [
+      455.26,
+      1558.24,
+      1661.43
+    ],
+    "bbox_max": [
+      1165.26,
+      1578.24,
+      1684.52
+    ],
+    "dimensions": [
+      710.0,
+      20.0,
+      23.09
+    ],
+    "volume": 179453.56
+  },
+  {
+    "solid_index": 30,
+    "tag": 31,
+    "name": "Shapes/main/NAUO11/joint",
+    "bbox_min": [
+      443.39,
+      890.24,
+      1405.18
+    ],
+    "bbox_max": [
+      543.06,
+      950.24,
+      1504.85
+    ],
+    "dimensions": [
+      99.67,
+      60.0,
+      99.67
+    ],
+    "volume": 77421.58
+  },
+  {
+    "solid_index": 31,
+    "tag": 32,
+    "name": "Shapes/main/NAUO12/joint",
+    "bbox_min": [
+      443.75,
+      890.24,
+      2053.54
+    ],
+    "bbox_max": [
+      542.7,
+      950.24,
+      2152.49
+    ],
+    "dimensions": [
+      98.95,
+      60.0,
+      98.95
+    ],
+    "volume": 77421.58
+  },
+  {
+    "solid_index": 32,
+    "tag": 33,
+    "name": "Shapes/main/NAUO13/joint",
+    "bbox_min": [
+      1091.97,
+      890.24,
+      1405.54
+    ],
+    "bbox_max": [
+      1190.92,
+      950.24,
+      1504.49
+    ],
+    "dimensions": [
+      98.95,
+      60.0,
+      98.95
+    ],
+    "volume": 77421.58
+  },
+  {
+    "solid_index": 33,
+    "tag": 34,
+    "name": "Shapes/main/NAUO14/joint",
+    "bbox_min": [
+      1091.97,
+      890.24,
+      2053.54
+    ],
+    "bbox_max": [
+      1190.92,
+      950.24,
+      2152.49
+    ],
+    "dimensions": [
+      98.95,
+      60.0,
+      98.95
+    ],
+    "volume": 77421.58
+  },
+  {
+    "solid_index": 34,
+    "tag": 35,
+    "name": "Shapes/main/NAUO15/holder",
+    "bbox_min": [
+      520.0,
+      1535.24,
+      1856.97
+    ],
+    "bbox_max": [
+      672.67,
+      1601.24,
+      2009.04
+    ],
+    "dimensions": [
+      152.67,
+      66.0,
+      152.06
+    ],
+    "volume": 823609.82
+  },
+  {
+    "solid_index": 35,
+    "tag": 36,
+    "name": "Shapes/main/NAUO16/holder serew",
+    "bbox_min": [
+      639.34,
+      1569.74,
+      1932.54
+    ],
+    "bbox_max": [
+      652.34,
+      1582.74,
+      1997.98
+    ],
+    "dimensions": [
+      13.0,
+      13.0,
+      65.44
+    ],
+    "volume": 4577.17
+  },
+  {
+    "solid_index": 36,
+    "tag": 37,
+    "name": "Shapes/main/NAUO17/holder serew",
+    "bbox_min": [
+      639.34,
+      1544.74,
+      1932.54
+    ],
+    "bbox_max": [
+      652.34,
+      1557.74,
+      1997.98
+    ],
+    "dimensions": [
+      13.0,
+      13.0,
+      65.44
+    ],
+    "volume": 4577.17
+  },
+  {
+    "solid_index": 37,
+    "tag": 38,
+    "name": "Shapes/main/NAUO18/motot/NAUO20/case",
+    "bbox_min": [
+      556.34,
+      1530.24,
+      1919.97
+    ],
+    "bbox_max": [
+      636.34,
+      1665.24,
+      1999.97
+    ],
+    "dimensions": [
+      80.0,
+      135.0,
+      80.0
+    ],
+    "volume": 52624.82
+  },
+  {
+    "solid_index": 38,
+    "tag": 39,
+    "name": "Shapes/main/NAUO18/motot/NAUO21/tool",
+    "bbox_min": [
+      586.84,
+      1484.24,
+      1950.47
+    ],
+    "bbox_max": [
+      605.84,
+      1530.24,
+      1969.47
+    ],
+    "dimensions": [
+      19.0,
+      46.0,
+      19.0
+    ],
+    "volume": 9070.35
+  },
+  {
+    "solid_index": 39,
+    "tag": 40,
+    "name": "Shapes/main/NAUO19/3d",
+    "bbox_min": [
+      520.0,
+      1538.9,
+      1627.97
+    ],
+    "bbox_max": [
+      574.34,
+      1593.24,
+      1700.98
+    ],
+    "dimensions": [
+      54.33,
+      54.35,
+      73.0
+    ],
+    "volume": 160677.47
+  }
+]
