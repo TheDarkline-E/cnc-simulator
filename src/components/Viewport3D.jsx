@@ -387,7 +387,7 @@ export default function Viewport3D({
 
 
     // Load Blender-Grade CAD Assemblies with Procedural PBR Textures
-    loadMachineModels(machineRoot, enclosureGroup, gantryGroup, tableGroup, spindleGroup, toolGroup, theme);
+    loadMachineModels(machineRoot, enclosureGroup, cornerJointsGroup, gantryGroup, tableGroup, spindleGroup, toolGroup, theme);
 
     // ================= Animation Loop =================
     let animId;
@@ -396,82 +396,86 @@ export default function Viewport3D({
     const animate = () => {
       animId = requestAnimationFrame(animate);
 
-      const now = performance.now();
-      const dt = Math.min(0.1, (now - lastTime) / 1000.0);
-      lastTime = now;
+      try {
+        const now = performance.now();
+        const dt = Math.min(0.1, (now - lastTime) / 1000.0);
+        lastTime = now;
 
-      controls.update();
+        controls.update();
 
-      const curTool = kinematics ? kinematics.currentPos : { x: 0, y: 0, z: 25 };
-      const isCutting = kinematics && kinematics.spindleActive && (curTool.z <= 0.05);
-      const rpm = kinematics?.spindleRPM || 8000;
-      const mrr = materialEngine ? materialEngine.currentMRR : 0;
-      const stockHeight = stockConfig?.height || 30.0;
+        const curTool = kinematics ? kinematics.currentPos : { x: 0, y: 0, z: 25 };
+        const isCutting = kinematics && kinematics.spindleActive && (curTool.z <= 0.05);
+        const rpm = kinematics?.spindleRPM || 8000;
+        const mrr = materialEngine ? materialEngine.currentMRR : 0;
+        const stockHeight = stockConfig?.height || 30.0;
 
-      // 1. Tool Spindle Rotation proportional to RPM
-      if (kinematics && kinematics.spindleActive && toolGroupRef.current) {
-        const radPerSec = (rpm * Math.PI * 2) / 60.0;
-        toolGroupRef.current.rotation.y += Math.min(1.5, radPerSec * dt);
-      }
-
-      // 2. Pulse Status Indicator LEDs
-      const pulse = Math.sin(now * 0.008) * 0.35 + 0.65;
-      if (ledGreenRef.current) {
-        const isRunning = kinematics && kinematics.spindleActive;
-        ledGreenRef.current.visible = isRunning;
-        if (isRunning) ledGreenRef.current.scale.setScalar(pulse);
-      }
-      if (ledYellowRef.current) {
-        const isPaused = simState === 'paused';
-        ledYellowRef.current.visible = isPaused;
-        if (isPaused) ledYellowRef.current.scale.setScalar(pulse);
-      }
-      if (ledRedRef.current) {
-        const isAlarm = kinematics && kinematics.limitsExceeded;
-        ledRedRef.current.visible = isAlarm;
-        if (isAlarm) ledRedRef.current.scale.setScalar(pulse);
-      }
-
-      // 3. Chip Physics Update (Verlet, ejection, collision, accumulation)
-      if (chipEngineRef.current) {
-        chipEngineRef.current.update(dt, isCutting, curTool, 3.0, rpm, mrr, stockHeight);
-      }
-
-      // 4. Coolant Simulation Update
-      const shouldCoolantRun = coolantMode === 'flood' || (coolantMode === 'auto' && kinematics && kinematics.coolantActive);
-      if (coolantSimRef.current) {
-        coolantSimRef.current.setCoolantState(shouldCoolantRun, 'flood');
-        coolantSimRef.current.update(dt, curTool, rpm, isCutting);
-      }
-
-      // 5. Camera Shake on Heavy Roughing Cuts
-      if (motionPlannerRef.current) {
-        if (isCutting && mrr > 5) {
-          motionPlannerRef.current.triggerImpact(mrr);
+        // 1. Tool Spindle Rotation proportional to RPM
+        if (kinematics && kinematics.spindleActive && toolGroupRef.current) {
+          const radPerSec = (rpm * Math.PI * 2) / 60.0;
+          toolGroupRef.current.rotation.y += Math.min(1.5, radPerSec * dt);
         }
-        const shake = motionPlannerRef.current.getShakeOffset();
-        if (shake.x !== 0 || shake.y !== 0) {
-          camera.position.x += shake.x;
-          camera.position.y += shake.y;
-          camera.position.z += shake.z;
+
+        // 2. Pulse Status Indicator LEDs
+        const pulse = Math.sin(now * 0.008) * 0.35 + 0.65;
+        if (ledGreenRef.current) {
+          const isRunning = kinematics && kinematics.spindleActive;
+          ledGreenRef.current.visible = isRunning;
+          if (isRunning) ledGreenRef.current.scale.setScalar(pulse);
         }
-      }
+        if (ledYellowRef.current) {
+          const isPaused = simState === 'paused';
+          ledYellowRef.current.visible = isPaused;
+          if (isPaused) ledYellowRef.current.scale.setScalar(pulse);
+        }
+        if (ledRedRef.current) {
+          const isAlarm = kinematics && kinematics.limitsExceeded;
+          ledRedRef.current.visible = isAlarm;
+          if (isAlarm) ledRedRef.current.scale.setScalar(pulse);
+        }
 
-      // 6. Follow Cam (Tracking Cutter Zone)
-      if (followCam && curTool) {
-        const targetWorld = new THREE.Vector3(
-          TABLE_SURFACE_POS.x + curTool.x,
-          TABLE_SURFACE_POS.y + stockHeight + curTool.z,
-          217.64
-        );
-        controls.target.lerp(targetWorld, 0.04);
-      }
+        // 3. Chip Physics Update (Verlet, ejection, collision, accumulation)
+        if (chipEngineRef.current) {
+          chipEngineRef.current.update(dt, isCutting, curTool, 3.0, rpm, mrr, stockHeight);
+        }
 
-      // 7. Render through EffectComposer Post-Processing Pipeline
-      if (renderPipelineRef.current) {
-        renderPipelineRef.current.render(dt);
-      } else {
-        renderer.render(scene, camera);
+        // 4. Coolant Simulation Update
+        const shouldCoolantRun = coolantMode === 'flood' || (coolantMode === 'auto' && kinematics && kinematics.coolantActive);
+        if (coolantSimRef.current) {
+          coolantSimRef.current.setCoolantState(shouldCoolantRun, 'flood');
+          coolantSimRef.current.update(dt, curTool, rpm, isCutting);
+        }
+
+        // 5. Camera Shake on Heavy Roughing Cuts
+        if (motionPlannerRef.current) {
+          if (isCutting && mrr > 5) {
+            motionPlannerRef.current.triggerImpact(mrr);
+          }
+          const shake = motionPlannerRef.current.getShakeOffset();
+          if (shake.x !== 0 || shake.y !== 0) {
+            camera.position.x += shake.x;
+            camera.position.y += shake.y;
+            camera.position.z += shake.z;
+          }
+        }
+
+        // 6. Follow Cam (Tracking Cutter Zone)
+        if (followCam && curTool) {
+          const targetWorld = new THREE.Vector3(
+            TABLE_SURFACE_POS.x + curTool.x,
+            TABLE_SURFACE_POS.y + stockHeight + curTool.z,
+            217.64
+          );
+          controls.target.lerp(targetWorld, 0.04);
+        }
+
+        // 7. Render through EffectComposer Post-Processing Pipeline
+        if (renderPipelineRef.current) {
+          renderPipelineRef.current.render(dt);
+        } else {
+          renderer.render(scene, camera);
+        }
+      } catch (err) {
+        console.error("Render loop error:", err);
       }
     };
     animate();
@@ -537,7 +541,7 @@ export default function Viewport3D({
   }, [qualityTier, materialEngine]);
 
   // Load Machine Subassemblies with Blender-Grade Procedural PBR Textures
-  const loadMachineModels = (root, enclosure, gantry, table, spindle, tool, currentTheme) => {
+  const loadMachineModels = (root, enclosure, cornerJointsGroup, gantry, table, spindle, tool, currentTheme) => {
     const loader = new GLTFLoader();
     setModelLoading(true);
 

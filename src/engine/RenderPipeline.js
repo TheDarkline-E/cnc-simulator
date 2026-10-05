@@ -176,10 +176,15 @@ export class RenderPipeline {
 
   render(deltaTime) {
     if (this.enabled && this.composer) {
-      this.composer.render(deltaTime);
-    } else {
-      this.renderer.render(this.scene, this.camera);
+      try {
+        this.composer.render(deltaTime);
+        return;
+      } catch (e) {
+        console.warn('EffectComposer render fallback to standard renderer:', e);
+        this.enabled = false;
+      }
     }
+    this.renderer.render(this.scene, this.camera);
   }
 
   dispose() {
