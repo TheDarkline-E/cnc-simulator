@@ -86,6 +86,8 @@ export default function Viewport3D({
   const enclosureMaterialsRef = useRef({ glass: null, solid: null });
   const cornerJointsGroupRef = useRef(null);
   const cornerMaterialsRef = useRef({ blue: null, aluminum: null });
+  const printerHeadGroupRef = useRef(null);
+  const [toolheadMode, setToolheadMode] = useState('cnc'); // 'cnc' (default: ONLY CNC WORKS)
 
   const cadImporter = useMemo(() => new CADImporter(), []);
 
@@ -311,6 +313,7 @@ export default function Viewport3D({
     const tableGroup = new THREE.Group();
     const spindleGroup = new THREE.Group();
     const toolGroup = new THREE.Group();
+    const printerHeadGroup = new THREE.Group();
     const workpieceGroup = new THREE.Group();
     const stockGroup = new THREE.Group();
     const toolpathGroup = new THREE.Group();
@@ -320,11 +323,14 @@ export default function Viewport3D({
     machineRoot.add(cornerJointsGroup);
     machineRoot.add(tableGroup);
     machineRoot.add(gantryGroup);
+    machineRoot.add(printerHeadGroup);
     gantryGroup.add(spindleGroup);
     spindleGroup.add(toolGroup);
 
     enclosureGroupRef.current = enclosureGroup;
     cornerJointsGroupRef.current = cornerJointsGroup;
+    printerHeadGroupRef.current = printerHeadGroup;
+    printerHeadGroup.visible = false; // 3D printer head disabled: ONLY CNC WORKS
     gantryGroupRef.current = gantryGroup;
     tableGroupRef.current = tableGroup;
     spindleGroupRef.current = spindleGroup;
@@ -387,7 +393,7 @@ export default function Viewport3D({
 
 
     // Load Blender-Grade CAD Assemblies with Procedural PBR Textures
-    loadMachineModels(machineRoot, enclosureGroup, cornerJointsGroup, gantryGroup, tableGroup, spindleGroup, toolGroup, theme);
+    loadMachineModels(machineRoot, enclosureGroup, cornerJointsGroup, gantryGroup, tableGroup, spindleGroup, toolGroup, printerHeadGroup, theme);
 
     // ================= Animation Loop =================
     let animId;
@@ -541,7 +547,7 @@ export default function Viewport3D({
   }, [qualityTier, materialEngine]);
 
   // Load Machine Subassemblies with Blender-Grade Procedural PBR Textures
-  const loadMachineModels = (root, enclosure, cornerJointsGroup, gantry, table, spindle, tool, currentTheme) => {
+  const loadMachineModels = (root, enclosure, cornerJointsGroup, gantry, table, spindle, tool, printerHeadGroup, currentTheme) => {
     const loader = new GLTFLoader();
     setModelLoading(true);
 
@@ -754,9 +760,11 @@ export default function Viewport3D({
       loadPart('/models/gantry_x.glb', gantry, gantryMaterial, true),
       loadPart('/models/table.glb', table, tableMaterial, true),
       loadPart('/models/spindle_z.glb', spindle, spindleMaterial, true),
-      loadPart('/models/tool.glb', tool, toolMaterial, true, TOOL_COLLET_OFFSET)
+      loadPart('/models/tool.glb', tool, toolMaterial, true, TOOL_COLLET_OFFSET),
+      loadPart('/models/printer_head.glb', printerHeadGroup, gantryMaterial, true)
     ]).then(() => {
       enclosure.visible = enclosureMode !== 'hide';
+      if (printerHeadGroup) printerHeadGroup.visible = false; // Disabled: ONLY CNC WORKS
       setModelLoading(false);
       if (kinematics) {
         kinematics.applyTransform();
@@ -1125,6 +1133,23 @@ export default function Viewport3D({
             }} />
             Joints: {cornerColor === 'blue' ? 'BLUE' : 'ALU'}
           </button>
+
+          {/* Active Toolhead Mode Pill: CNC SPINDLE ONLY */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '5px 12px',
+            borderRadius: 'var(--radius-pill)',
+            background: 'rgba(5, 150, 105, 0.10)',
+            color: 'var(--accent-green)',
+            fontSize: '11px',
+            fontWeight: 700,
+            border: '1px solid rgba(5, 150, 105, 0.25)'
+          }}>
+            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--accent-green)', boxShadow: '0 0 6px rgba(5, 150, 105, 0.6)' }} />
+            MODE: CNC SPINDLE ONLY (3D PRINTER OFF)
+          </div>
 
           {/* Assembly Mode Toggle: Factory CAD Rest (0 mm) vs Active Digital Twin Work */}
           <button
