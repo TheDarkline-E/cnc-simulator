@@ -121,6 +121,30 @@ export default function CenterViewportCard({
             }}>
               Haas 3-Axis VMC
             </span>
+            <button
+              onClick={() => {
+                if (viewportApiRef?.current?.cycleEnclosureMode) {
+                  viewportApiRef.current.cycleEnclosureMode();
+                }
+              }}
+              style={{
+                fontSize: '11px',
+                fontWeight: 600,
+                padding: '3px 10px',
+                borderRadius: 'var(--radius-pill)',
+                background: 'var(--bg-app)',
+                color: 'var(--text-sub)',
+                border: '1px solid var(--border-light)',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                boxShadow: '0 2px 6px rgba(0,0,0,0.03)'
+              }}
+              title="Toggle Machine Outer Cabinet (Solid / Tinted Glass / Hidden)"
+            >
+              <Box size={12} color="var(--accent-purple)" /> Cabinet Door
+            </button>
           </h2>
         </div>
 

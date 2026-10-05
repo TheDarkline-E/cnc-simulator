@@ -69,7 +69,7 @@ export default function Viewport3D({
 
   // Visibility & Display states
   const [showMachine, setShowMachine] = useState(true);
-  const [enclosureMode, setEnclosureMode] = useState('glass'); // 'glass' | 'solid' | 'hide'
+  const [enclosureMode, setEnclosureMode] = useState('solid'); // 'solid' | 'glass' | 'hide'
   const [workpieceMode, setWorkpieceMode] = useState('solid'); // 'solid' | 'heatmap' | 'ghost' | 'partOnly'
   const [showToolpath, setShowToolpath] = useState(true);
   const [modelLoading, setModelLoading] = useState(true);
@@ -453,17 +453,9 @@ export default function Viewport3D({
           coolantSimRef.current.update(dt, curTool, rpm, isCutting);
         }
 
-        // 5. Camera Shake on Heavy Roughing Cuts
-        if (motionPlannerRef.current) {
-          if (isCutting && mrr > 5) {
-            motionPlannerRef.current.triggerImpact(mrr);
-          }
-          const shake = motionPlannerRef.current.getShakeOffset();
-          if (shake.x !== 0 || shake.y !== 0) {
-            camera.position.x += shake.x;
-            camera.position.y += shake.y;
-            camera.position.z += shake.z;
-          }
+        // 5. Physical cutting impact registered without camera shake
+        if (motionPlannerRef.current && isCutting && mrr > 5) {
+          motionPlannerRef.current.triggerImpact(mrr);
         }
 
         // 6. Follow Cam (Tracking Cutter Zone)
@@ -758,7 +750,7 @@ export default function Viewport3D({
     Promise.all([
       loadPart('/models/frame_base.glb', root, frameMaterial, true),
       loadPart('/models/corner_joints.glb', cornerJointsGroup, cornerJointsMaterial, true),
-      loadPart('/models/enclosure.glb', enclosure, enclosureGlassMaterial, false),
+      loadPart('/models/enclosure.glb', enclosure, enclosureSolidMaterial, true),
       loadPart('/models/gantry_x.glb', gantry, gantryMaterial, true),
       loadPart('/models/table.glb', table, tableMaterial, true),
       loadPart('/models/spindle_z.glb', spindle, spindleMaterial, true),
@@ -1016,10 +1008,11 @@ export default function Viewport3D({
         setCameraView,
         blowOffChips: handleBlowOffChips,
         cycleWorkpieceMode,
+        cycleEnclosureMode,
         cycleQualityTier
       };
     }
-  }, [apiRef]);
+  }, [apiRef, enclosureMode]);
 
   const currentPreset = MATERIAL_PRESETS[stockConfig?.material] || MATERIAL_PRESETS.al6061;
 
