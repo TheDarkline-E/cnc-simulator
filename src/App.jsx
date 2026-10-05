@@ -6,11 +6,11 @@ import {
   Sun, Moon, UploadCloud, Disc, Sparkles
 } from 'lucide-react';
 
-import Viewport3D from './components/Viewport3D';
-import SetupPanel from './components/SetupPanel';
-import ManufacturingPanel from './components/ManufacturingPanel';
-import SimControls from './components/SimControls';
+import SidebarNav from './components/SidebarNav';
+import CenterViewportCard from './components/CenterViewportCard';
+import RightTelemetryCard from './components/RightTelemetryCard';
 import InspectionModal from './components/InspectionModal';
+import MachineSetupModal from './components/MachineSetupModal';
 
 import { MachineKinematics } from './engine/MachineKinematics';
 import { MaterialRemovalEngine } from './engine/MaterialRemoval';
@@ -91,6 +91,7 @@ export default function App() {
   const [currentOperation, setCurrentOperation] = useState('Idle');
   const [speed, setSpeed] = useState(1.0);
   const [showInspection, setShowInspection] = useState(false);
+  const [showSetupModal, setShowSetupModal] = useState(false);
 
   // Live DRO
   const [dro, setDro] = useState({
@@ -102,8 +103,9 @@ export default function App() {
     lastError: null
   });
 
-  // Simulation Engine Reference
+  // Simulation Engine & Viewport API References
   const simEngineRef = useRef(null);
+  const viewportApiRef = useRef(null);
 
   // Analyze CAD file whenever userPartFile changes
   useEffect(() => {
@@ -230,183 +232,87 @@ export default function App() {
 
   return (
     <div style={{
-      display: 'flex',
-      flexDirection: 'column',
       width: '100vw',
       height: '100vh',
-      background: 'var(--bg-primary)',
-      color: 'var(--text-primary)',
-      overflow: 'hidden'
+      background: 'var(--bg-desktop)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '16px',
+      overflow: 'hidden',
+      boxSizing: 'border-box'
     }}>
-      {/* Pinterest-Style Modern Studio Header */}
-      <header style={{
-        height: '56px',
-        padding: '0 20px',
-        background: 'var(--bg-secondary)',
-        borderBottom: '1px solid var(--border-color)',
+      {/* Master Application Rounded Frame matching user reference */}
+      <div style={{
+        width: '100%',
+        maxWidth: '1440px',
+        height: '100%',
+        maxHeight: '940px',
+        background: 'var(--bg-app)',
+        borderRadius: 'var(--radius-app)',
+        boxShadow: 'var(--shadow-app)',
         display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        zIndex: 30,
-        boxShadow: 'var(--shadow-sm)'
+        overflow: 'hidden',
+        position: 'relative'
       }}>
-        {/* Left Branding */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{
-            width: '32px',
-            height: '32px',
-            borderRadius: '10px',
-            background: 'var(--accent-primary)',
-            color: 'var(--bg-secondary)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontWeight: 800,
-            fontSize: '14px',
-            boxShadow: 'var(--shadow-sm)'
-          }}>
-            <Cpu size={18} />
-          </div>
-          <div>
-            <h1 style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.3px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              CNC DIGITAL TWIN
-              <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)' }}>STUDIO</span>
-            </h1>
-          </div>
-          <span style={{
-            fontSize: '11px',
-            background: 'var(--bg-tertiary)',
-            border: '1px solid var(--border-color)',
-            color: 'var(--text-secondary)',
-            padding: '3px 10px',
-            borderRadius: 'var(--radius-pill)',
-            fontWeight: 600
-          }}>
-            CAD: main.STEP
-          </span>
-        </div>
-
-        {/* Center Active Part Pill */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            background: 'var(--bg-primary)',
-            border: '1px solid var(--border-color)',
-            padding: '5px 14px',
-            borderRadius: 'var(--radius-pill)',
-            fontSize: '12px'
-          }}>
-            <Box size={14} color="var(--text-muted)" />
-            <span style={{ color: 'var(--text-muted)' }}>Workpiece:</span>
-            <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>
-              {typeof userPartFile === 'string' ? userPartFile.split('/').pop().replace('.stl', '') : userPartFile?.name || 'Custom Model'}
-            </span>
-            <span style={{ color: 'var(--text-muted)' }}>•</span>
-            <span style={{ fontWeight: 600, color: 'var(--accent-green)' }}>
-              {stockConfig.material.toUpperCase()}
-            </span>
-          </div>
-        </div>
-
-        {/* Right Actions: Theme Toggle, Inspection & Run */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <button
-            onClick={toggleTheme}
-            style={{ fontSize: '12px', padding: '6px 14px', borderRadius: 'var(--radius-pill)' }}
-            title={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
-          >
-            {theme === 'light' ? <Moon size={14} /> : <Sun size={14} />}
-            <span>{theme === 'light' ? 'Dark' : 'Light'}</span>
-          </button>
-
-          <button
-            onClick={() => setShowInspection(true)}
-            style={{ fontSize: '12px', padding: '6px 14px', borderRadius: 'var(--radius-pill)' }}
-          >
-            <Activity size={14} /> Quality Report
-          </button>
-          
-          <button
-            onClick={handleStart}
-            className="primary"
-            style={{ fontSize: '12px', padding: '6px 18px', borderRadius: 'var(--radius-pill)', gap: '6px' }}
-          >
-            <Play size={14} /> Run Machining
-          </button>
-        </div>
-      </header>
-
-      {/* Main Workspace Body */}
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-        
-        {/* Left Setup Configuration Panel */}
-        <SetupPanel
+        {/* Left Column: Sidebar Navigation */}
+        <SidebarNav
+          activeNav="machining"
           stockConfig={stockConfig}
           setStockConfig={setStockConfig}
-          toolConfig={toolConfig}
-          setToolConfig={setToolConfig}
-          machiningParams={machiningParams}
-          setMachiningParams={setMachiningParams}
           operations={operations}
-          setOperations={setOperations}
-          userPartFile={userPartFile}
-          setUserPartFile={setUserPartFile}
-          cadStats={cadStats}
-          onAutoFitStock={handleAutoFitStock}
-          onGenerateToolpath={generateToolpath}
-          isGenerating={isGenerating}
+          currentOperation={currentOperation}
+          onOpenInspection={() => setShowInspection(true)}
+          onOpenSetup={() => setShowSetupModal(true)}
         />
 
-        {/* Center 3D Digital Twin Viewport */}
-        <div style={{ flex: 1, position: 'relative', height: '100%', overflow: 'hidden' }}>
-          <Viewport3D
+        {/* Center Column: Hero 3D Card */}
+        <div style={{ flex: 1, padding: '16px 0', height: '100%', display: 'flex' }}>
+          <CenterViewportCard
             kinematics={kinematics}
             materialEngine={materialEngine}
             toolpathData={toolpathData}
             stockConfig={stockConfig}
+            toolConfig={toolConfig}
             userPartFile={userPartFile}
             simState={simState}
             theme={theme}
+            onStart={handleStart}
+            onPause={handlePause}
+            onResume={handleResume}
+            onReset={handleReset}
+            progressPercent={progressPercent}
+            viewportApiRef={viewportApiRef}
           />
         </div>
 
-        {/* Right Manufacturing Telemetry & Stage Pipeline (No G-Code clutter!) */}
-        <ManufacturingPanel
+        {/* Right Column: User Profile, Heartrate & Researches Timeline */}
+        <RightTelemetryCard
           dro={dro}
           simState={simState}
           currentOperation={currentOperation}
-          kinematics={kinematics}
-          operations={operations}
           progressPercent={progressPercent}
-          stockConfig={stockConfig}
-          toolConfig={toolConfig}
-          elapsedTimeSec={elapsedTimeSec}
-          removedPercent={removedPercent}
+          onOpenSettings={() => setShowSetupModal(true)}
+          onOpenInspection={() => setShowInspection(true)}
+          toggleTheme={toggleTheme}
+          theme={theme}
         />
-
       </div>
 
-      {/* Bottom Floating Simulation Controls Dock */}
-      <SimControls
-        simState={simState}
-        onStart={handleStart}
-        onPause={handlePause}
-        onResume={handleResume}
-        onStop={handleStop}
-        onReset={handleReset}
-        speed={speed}
-        onSetSpeed={handleSetSpeed}
-        progressPercent={progressPercent}
-        onSeek={handleSeek}
-        elapsedTimeSec={elapsedTimeSec}
-        estimatedTimeSec={toolpathData?.stats?.estimatedTimeMinutes ? toolpathData.stats.estimatedTimeMinutes * 60 : 120}
-        removedPercent={removedPercent}
-        currentOperation={currentOperation}
+      {/* CNC Machine & Tooling Setup Modal */}
+      <MachineSetupModal
+        isOpen={showSetupModal}
+        onClose={() => setShowSetupModal(false)}
+        stockConfig={stockConfig}
+        setStockConfig={setStockConfig}
+        toolConfig={toolConfig}
+        setToolConfig={setToolConfig}
+        machiningParams={machiningParams}
+        setMachiningParams={setMachiningParams}
+        onRegenerate={generateToolpath}
       />
 
-      {/* Post-Machining Quality Inspection Dialog */}
+      {/* Post-Machining Quality Metrology Dialog */}
       <InspectionModal
         isOpen={showInspection}
         onClose={() => setShowInspection(false)}
@@ -414,7 +320,6 @@ export default function App() {
         stockConfig={stockConfig}
         toolConfig={toolConfig}
       />
-
     </div>
   );
 }

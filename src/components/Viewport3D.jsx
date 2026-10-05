@@ -33,7 +33,9 @@ export default function Viewport3D({
   stockConfig,
   userPartFile,
   simState,
-  theme = 'light'
+  theme = 'light',
+  minimalUI = false,
+  apiRef = null
 }) {
   const containerRef = useRef(null);
   const sceneRef = useRef(null);
@@ -1008,6 +1010,17 @@ export default function Viewport3D({
     }
   };
 
+  useEffect(() => {
+    if (apiRef) {
+      apiRef.current = {
+        setCameraView,
+        blowOffChips: handleBlowOffChips,
+        cycleWorkpieceMode,
+        cycleQualityTier
+      };
+    }
+  }, [apiRef]);
+
   const currentPreset = MATERIAL_PRESETS[stockConfig?.material] || MATERIAL_PRESETS.al6061;
 
   return (
@@ -1035,12 +1048,14 @@ export default function Viewport3D({
         </div>
       )}
 
-      {/* Top Left Camera View Controls */}
-      <div style={{
-        position: 'absolute',
-        top: '16px',
-        left: '16px',
-        display: 'flex',
+      {!minimalUI && (
+        <>
+          {/* Top Left Camera View Controls */}
+          <div style={{
+            position: 'absolute',
+            top: '16px',
+            left: '16px',
+            display: 'flex',
         gap: '6px',
         zIndex: 5
       }}>
@@ -1344,6 +1359,8 @@ export default function Viewport3D({
           </button>
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 }

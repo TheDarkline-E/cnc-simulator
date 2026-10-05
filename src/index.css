@@ -1,66 +1,62 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
 :root {
-  /* Pinterest / Modern Design Studio Palette (Light Mode Default) */
-  --bg-primary: #f8fafc;
-  --bg-secondary: #ffffff;
-  --bg-tertiary: #f1f5f9;
-  --bg-hover: #e2e8f0;
-  --bg-panel: rgba(255, 255, 255, 0.94);
+  /* Dribbble / Pinterest Modern Clean Palette (Matching Reference) */
+  --bg-desktop: #ececec;           /* Outer desk background */
+  --bg-app: #ffffff;               /* Main rounded application frame */
+  --bg-card: #f8f9fa;              /* Inner cards background */
+  --bg-card-hover: #f1f3f5;
+  --bg-pill: #f1f3f5;
   
-  --border-color: #e2e8f0;
-  --border-subtle: #edf2f7;
-  --border-focus: #111827;
+  --border-light: #f0f1f4;
+  --border-card: #e9ecef;
   
-  --text-primary: #0f172a;
-  --text-secondary: #475569;
-  --text-muted: #94a3b8;
+  --text-main: #14171a;
+  --text-sub: #657786;
+  --text-muted: #aab8c2;
   
-  --accent-primary: #0f172a;      /* Bold Pinterest Ink Charcoal */
-  --accent-blue: #2563eb;         /* Precision Studio Blue */
-  --accent-cyan: #0284c7;
-  --accent-green: #059669;        /* Production Emerald */
-  --accent-yellow: #d97706;
-  --accent-red: #e11d48;
+  /* Primary Signature Accent: Lilac / Periwinkle Purple */
+  --accent-purple: #7c5cfc;
+  --accent-purple-light: #ece8ff;
+  --accent-purple-hover: #6d4be2;
+  --accent-dark: #121316;          /* Deep circular icon black */
+  --accent-green: #10b981;
+  --accent-blue: #3b82f6;
   
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  --font-mono: 'JetBrains Mono', 'SF Mono', monospace;
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
   
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
-  --shadow-md: 0 4px 16px -2px rgba(15, 23, 42, 0.06), 0 2px 6px -1px rgba(15, 23, 42, 0.03);
-  --shadow-lg: 0 12px 32px -4px rgba(15, 23, 42, 0.08), 0 4px 12px -2px rgba(15, 23, 42, 0.04);
-  --card-shadow: var(--shadow-md);
+  --shadow-app: 0 30px 80px rgba(0, 0, 0, 0.08), 0 8px 24px rgba(0, 0, 0, 0.04);
+  --shadow-card: 0 10px 30px rgba(0, 0, 0, 0.03), 0 2px 8px rgba(0, 0, 0, 0.02);
+  --shadow-float: 0 12px 32px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.04);
   
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 18px;
+  --radius-app: 36px;
+  --radius-card: 26px;
+  --radius-sm: 14px;
   --radius-pill: 9999px;
 }
 
 [data-theme="dark"] {
-  --bg-primary: #0b0f19;
-  --bg-secondary: #131b2e;
-  --bg-tertiary: #1e293b;
-  --bg-hover: #293548;
-  --bg-panel: rgba(19, 27, 46, 0.92);
+  --bg-desktop: #0b0d13;
+  --bg-app: #13161f;
+  --bg-card: #1a1e2b;
+  --bg-card-hover: #222738;
+  --bg-pill: #222738;
   
-  --border-color: #27354a;
-  --border-subtle: #1e293b;
-  --border-focus: #60a5fa;
+  --border-light: #252b3d;
+  --border-card: #252b3d;
   
-  --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
+  --text-main: #f8fafc;
+  --text-sub: #94a3b8;
   --text-muted: #64748b;
   
-  --accent-primary: #f8fafc;
-  --accent-blue: #3b82f6;
-  --accent-cyan: #38bdf8;
-  --accent-green: #10b981;
-  --accent-yellow: #f59e0b;
-  --accent-red: #f43f5e;
+  --accent-purple: #8b70f6;
+  --accent-purple-light: rgba(139, 112, 246, 0.2);
+  --accent-purple-hover: #9d85fc;
+  --accent-dark: #ffffff;
   
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 6px 20px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 14px 40px rgba(0, 0, 0, 0.6);
-  --card-shadow: var(--shadow-md);
+  --shadow-app: 0 30px 80px rgba(0, 0, 0, 0.6);
+  --shadow-card: 0 10px 30px rgba(0, 0, 0, 0.4);
 }
 
 * {
@@ -71,17 +67,21 @@
 
 body {
   font-family: var(--font-sans);
-  background-color: var(--bg-primary);
-  color: var(--text-primary);
+  background-color: var(--bg-desktop);
+  color: var(--text-main);
   overflow: hidden;
   height: 100vh;
   width: 100vw;
   user-select: none;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
 }
 
-/* Custom Sleek Scrollbar */
+/* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 5px;
   height: 5px;
@@ -90,144 +90,143 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--border-color);
+  background: #cbd5e1;
   border-radius: var(--radius-pill);
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--text-muted);
+  background: #94a3b8;
 }
 
-/* Pinterest / Clean Studio Buttons */
+/* Reference-Style Buttons */
 button {
   font-family: inherit;
   cursor: pointer;
-  border: 1px solid var(--border-color);
-  background: var(--bg-secondary);
-  color: var(--text-primary);
-  border-radius: var(--radius-pill);
-  padding: 7px 14px;
-  font-size: 12px;
-  font-weight: 600;
-  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  border: none;
+  background: transparent;
+  color: var(--text-main);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  box-shadow: var(--shadow-sm);
-}
-
-button:hover:not(:disabled) {
-  background: var(--bg-tertiary);
-  border-color: #cbd5e1;
-  transform: translateY(-1px);
 }
 
 button:active:not(:disabled) {
-  transform: translateY(0);
+  transform: scale(0.97);
 }
 
 button:disabled {
-  opacity: 0.45;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
-button.primary {
-  background: var(--accent-primary);
-  border-color: var(--accent-primary);
-  color: var(--bg-secondary);
-}
-button.primary:hover:not(:disabled) {
-  opacity: 0.92;
-  background: var(--accent-primary);
-  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.18);
+/* Reference Circular Dark Action Buttons */
+.circle-btn-dark {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--accent-dark);
+  color: var(--bg-app);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  transition: transform 0.18s ease, opacity 0.18s ease;
 }
 
-button.accent {
-  background: var(--accent-blue);
-  border-color: var(--accent-blue);
+.circle-btn-dark:hover {
+  opacity: 0.88;
+  transform: translateY(-1px);
+}
+
+/* Signature Reference Purple Pill Button */
+.btn-purple-pill {
+  background: var(--accent-purple);
   color: #ffffff;
-}
-button.accent:hover:not(:disabled) {
-  background: #1d4ed8;
-  border-color: #1d4ed8;
+  padding: 10px 20px;
+  border-radius: var(--radius-pill);
+  font-weight: 700;
+  font-size: 13px;
+  box-shadow: 0 6px 18px rgba(124, 92, 252, 0.28);
+  gap: 8px;
 }
 
-button.success {
-  background: var(--accent-green);
-  border-color: var(--accent-green);
+.btn-purple-pill:hover:not(:disabled) {
+  background: var(--accent-purple-hover);
+  box-shadow: 0 8px 24px rgba(124, 92, 252, 0.38);
+  transform: translateY(-1px);
+}
+
+/* Secondary Pill */
+.btn-secondary-pill {
+  background: var(--bg-pill);
+  color: var(--text-main);
+  padding: 8px 16px;
+  border-radius: var(--radius-pill);
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.btn-secondary-pill:hover:not(:disabled) {
+  background: var(--bg-card-hover);
+}
+
+/* Segmented Capsule Switcher (Reference Day/Week/Month style) */
+.capsule-switcher {
+  display: inline-flex;
+  padding: 3px;
+  background: var(--bg-pill);
+  border-radius: var(--radius-pill);
+  gap: 2px;
+}
+
+.capsule-switcher button {
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-sub);
+}
+
+.capsule-switcher button.active {
+  background: var(--accent-purple);
   color: #ffffff;
-}
-button.success:hover:not(:disabled) {
-  background: #047857;
+  box-shadow: 0 2px 8px rgba(124, 92, 252, 0.25);
 }
 
-button.danger {
-  background: rgba(225, 29, 72, 0.08);
-  border-color: rgba(225, 29, 72, 0.25);
-  color: var(--accent-red);
-}
-button.danger:hover:not(:disabled) {
-  background: rgba(225, 29, 72, 0.16);
-}
-
-/* Inputs & Form Controls */
+/* Input Fields */
 input, select {
   font-family: inherit;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  color: var(--text-primary);
-  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  color: var(--text-main);
+  border-radius: var(--radius-sm);
   padding: 8px 12px;
-  font-size: 13px;
+  font-size: 12px;
   outline: none;
   transition: all 0.15s ease;
 }
 
 input:focus, select:focus {
-  border-color: var(--accent-blue);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+  border-color: var(--accent-purple);
+  box-shadow: 0 0 0 3px rgba(124, 92, 252, 0.12);
 }
 
 .mono {
   font-family: var(--font-mono);
 }
 
-/* Glassmorphism Panel */
-.glass-panel {
-  background: var(--bg-panel);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid var(--border-color);
-  box-shadow: var(--card-shadow);
+/* Floating Frosted Glass Widgets */
+.glass-widget {
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: var(--shadow-float);
+  border-radius: 20px;
 }
 
-/* Pinterest Pill Badges */
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 3px 10px;
-  border-radius: var(--radius-pill);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.2px;
-}
-
-.badge-ready { background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
-.badge-running { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
-.badge-paused { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
-.badge-error { background: #ffe4e6; color: #be123c; border: 1px solid #fecdd3; }
-.badge-complete { background: #f3e8ff; color: #7e22ce; border: 1px solid #e9d5ff; }
-
-/* Pinterest-style clean card */
-.pinterest-card {
-  background: var(--bg-secondary);
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--border-color);
-  box-shadow: var(--card-shadow);
-  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease;
-}
-
-.pinterest-card:hover {
-  box-shadow: var(--shadow-lg);
+[data-theme="dark"] .glass-widget {
+  background: rgba(26, 30, 43, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
