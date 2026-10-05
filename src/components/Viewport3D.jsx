@@ -2,14 +2,24 @@ import React, { useEffect, useRef, useState, useMemo } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import { RectAreaLightUniformsLib } from 'three/examples/jsm/lights/RectAreaLightUniformsLib.js';
 import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { 
   Eye, EyeOff, Box, Compass, RotateCw, ZoomIn, 
-  Layers, Maximize2, ShieldAlert, Sparkles, Activity
+  Layers, Maximize2, ShieldAlert, Activity,
+  Droplets, Camera, Sliders, Wind, Flame
 } from 'lucide-react';
 import { CADImporter } from '../engine/CADImporter';
 import { MATERIAL_PRESETS } from '../engine/MaterialRemoval';
+import { WorkshopEnvironment } from '../engine/WorkshopEnvironment';
+import { RenderPipeline } from '../engine/RenderPipeline';
+import { proceduralTextures } from '../engine/ProceduralTextures';
+import { ChipPhysicsEngine } from '../engine/ChipPhysicsEngine';
+import { CoolantSimulation } from '../engine/CoolantSimulation';
+import { MotionPlanner } from '../engine/MotionPlanner';
+
+// Initialize RectAreaLight uniforms once
+RectAreaLightUniformsLib.init();
 
 // Machine center in CAD coordinates
 const MACHINE_CENTER = new THREE.Vector3(804.5, 1384.77, 1742.33);
@@ -31,8 +41,10 @@ export default function Viewport3D({
   const rendererRef = useRef(null);
   const controlsRef = useRef(null);
   const gridRef = useRef(null);
+  const workshopEnvRef = useRef(null);
+  const renderPipelineRef = useRef(null);
 
-  // Scene group references (100% strictly CAD subassemblies from main.STEP)
+  // Scene group references
   const machineRootRef = useRef(null);
   const gantryGroupRef = useRef(null);
   const tableGroupRef = useRef(null);
@@ -43,26 +55,60 @@ export default function Viewport3D({
   const toolpathGroupRef = useRef(null);
   const particleGroupRef = useRef(null);
 
-  // Particle systems references (Metal chips / swarf)
-  const chipGeoRef = useRef(null);
-  const chipMatRef = useRef(null);
-  const chipParticlesRef = useRef(null);
-  const chipVelocitiesRef = useRef([]);
+  // Status Indicator LEDs
+  const ledGreenRef = useRef(null);
+  const ledYellowRef = useRef(null);
+  const ledRedRef = useRef(null);
 
-  // Visibility & Workpiece Display state
+  // Simulation Engines
+  const chipEngineRef = useRef(null);
+  const coolantSimRef = useRef(null);
+  const motionPlannerRef = useRef(null);
+
+  // Visibility & Display states
   const [showMachine, setShowMachine] = useState(true);
-  const [enclosureMode, setEnclosureMode] = useState('hide'); // 'hide' | 'glass' | 'solid'
-  const [workpieceMode, setWorkpieceMode] = useState('solid'); // 'solid' | 'ghost' | 'partOnly'
+  const [enclosureMode, setEnclosureMode] = useState('glass'); // 'glass' | 'solid' | 'hide'
+  const [workpieceMode, setWorkpieceMode] = useState('solid'); // 'solid' | 'heatmap' | 'ghost' | 'partOnly'
   const [showToolpath, setShowToolpath] = useState(true);
   const [modelLoading, setModelLoading] = useState(true);
   const [cadLoading, setCadLoading] = useState(false);
+  const [machineAssemblyMode, setMachineAssemblyMode] = useState('park'); // Default: 'park' (exact factory CAD rest matching user CAD photo)
+  const [explodedFactor, setExplodedFactor] = useState(0.0);
+
+  // Blender-grade upgrades state
+  const [qualityTier, setQualityTier] = useState('high'); // 'low' | 'medium' | 'high' | 'ultra'
+  const [coolantMode, setCoolantMode] = useState('auto'); // 'auto' | 'flood' | 'mist' | 'off'
+  const [followCam, setFollowCam] = useState(false);
+  const [surfaceRoughness, setSurfaceRoughness] = useState({ Ra: 1.6, Rz: 6.3, isoGrade: 'N7 (Standard Milled)' });
+  const [cornerColor, setCornerColor] = useState('blue'); // 'blue' (exact CAD render) | 'aluminum' (satin silver)
 
   const enclosureGroupRef = useRef(null);
   const enclosureMaterialsRef = useRef({ glass: null, solid: null });
+  const cornerJointsGroupRef = useRef(null);
+  const cornerMaterialsRef = useRef({ blue: null, aluminum: null });
 
   const cadImporter = useMemo(() => new CADImporter(), []);
 
-  // Initialize Three.js Scene
+  const toggleCornerColor = () => {
+    const next = cornerColor === 'blue' ? 'aluminum' : 'blue';
+    setCornerColor(next);
+    if (cornerJointsGroupRef.current && cornerMaterialsRef.current[next]) {
+      const mat = cornerMaterialsRef.current[next];
+      cornerJointsGroupRef.current.traverse(child => {
+        if (child.isMesh) child.material = mat;
+      });
+    }
+  };
+
+  // Auto-engage active work kinematics when simulation starts, return to park when idle/reset
+  useEffect(() => {
+    if (simState === 'running' || simState?.isRunning) {
+      setMachineAssemblyMode('work');
+      if (kinematics) kinematics.setAssemblyMode('work');
+    }
+  }, [simState]);
+
+  // Initialize Three.js Scene, Pipeline, Lighting & Environment
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -70,90 +116,118 @@ export default function Viewport3D({
     const width = container.clientWidth;
     const height = container.clientHeight;
 
-    // Scene
+    // 1. Scene & Atmospheric Fog
     const scene = new THREE.Scene();
     const isLight = theme === 'light';
-    scene.background = new THREE.Color(isLight ? 0xe8ecf1 : 0x0a0f1a);
+    scene.background = new THREE.Color(isLight ? 0xe2e8f0 : 0x070b12);
+    scene.fog = new THREE.FogExp2(isLight ? 0xe2e8f0 : 0x070b12, 0.00010);
     sceneRef.current = scene;
 
-    // Camera
+    // 2. Camera
     const camera = new THREE.PerspectiveCamera(45, width / height, 5, 8000);
     camera.position.set(480, 360, 580);
     cameraRef.current = camera;
 
-    // Renderer — high-quality PBR pipeline
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
+    // 3. Renderer with ACES Filmic Tone Mapping & High Precision Shadow Maps
+    const renderer = new THREE.WebGLRenderer({ 
+      antialias: false, // Handled by FXAA pass in RenderPipeline
+      alpha: false, 
+      powerPreference: 'high-performance' 
+    });
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = isLight ? 1.25 : 1.1;
+    renderer.toneMappingExposure = isLight ? 1.25 : 1.15;
     container.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
-    // Studio Environment Map for realistic metallic specular reflections
-    const pmremGenerator = new THREE.PMREMGenerator(renderer);
-    pmremGenerator.compileEquirectangularShader();
-    const roomEnvScene = new RoomEnvironment();
-    const envTexture = pmremGenerator.fromScene(roomEnvScene, 0.04).texture;
+    // 4. Custom Procedural Industrial Workshop Environment
+    const workshopEnv = new WorkshopEnvironment(renderer);
+    workshopEnvRef.current = workshopEnv;
+    const envTexture = workshopEnv.generate(isLight);
     scene.environment = envTexture;
-    pmremGenerator.dispose();
 
-    // Orbit Controls
+    // 5. Blender-Grade RenderPipeline (EffectComposer + GTAO + UnrealBloom + FXAA)
+    const pipeline = new RenderPipeline(renderer, scene, camera, width, height);
+    pipeline.setQuality(qualityTier);
+    renderPipelineRef.current = pipeline;
+
+    // 6. Orbit Controls
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.06;
     controls.target.set(10, -220, -100);
-    controls.maxPolarAngle = Math.PI / 2 + 0.05;
+    controls.maxPolarAngle = Math.PI / 2 + 0.04;
     controlsRef.current = controls;
 
-    // Studio Lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, isLight ? 1.0 : 0.85);
+    // 7. Motion Planner
+    const motionPlanner = new MotionPlanner();
+    motionPlannerRef.current = motionPlanner;
+
+    // ================= Studio Lighting Rig =================
+    // Soft ambient fill
+    const ambientLight = new THREE.AmbientLight(0xffffff, isLight ? 0.9 : 0.65);
     scene.add(ambientLight);
 
     const hemiLight = new THREE.HemisphereLight(
-      isLight ? 0xdfe6ed : 0x3a4a5c,
-      isLight ? 0x8794a0 : 0x1a2530,
-      isLight ? 0.9 : 0.6
+      isLight ? 0xe2e8f0 : 0x1e293b,
+      isLight ? 0x94a3b8 : 0x0f172a,
+      isLight ? 0.95 : 0.65
     );
     scene.add(hemiLight);
 
-    // Key light (warm industrial white)
-    const dirLight1 = new THREE.DirectionalLight(isLight ? 0xfff5e6 : 0xffe8cc, isLight ? 2.2 : 1.8);
-    dirLight1.position.set(700, 1000, 800);
-    dirLight1.castShadow = true;
-    dirLight1.shadow.mapSize.width = 2048;
-    dirLight1.shadow.mapSize.height = 2048;
-    dirLight1.shadow.camera.near = 100;
-    dirLight1.shadow.camera.far = 3000;
-    dirLight1.shadow.camera.left = -700;
-    dirLight1.shadow.camera.right = 700;
-    dirLight1.shadow.camera.top = 700;
-    dirLight1.shadow.camera.bottom = -700;
-    dirLight1.shadow.bias = 0.0005;
-    scene.add(dirLight1);
+    // Overhead Industrial Fluorescent 1 (Ceiling Bay Key Light)
+    const rectLight1 = new THREE.RectAreaLight(isLight ? 0xfff8ee : 0xfffaed, 8.5, 340, 40);
+    rectLight1.position.set(0, 650, -150);
+    rectLight1.rotation.x = -Math.PI / 2;
+    scene.add(rectLight1);
 
-    // Fill light (cool machine floor fill)
-    const dirLight2 = new THREE.DirectionalLight(isLight ? 0xe0e8f5 : 0x7090b0, isLight ? 1.5 : 1.2);
-    dirLight2.position.set(-700, 600, 500);
-    scene.add(dirLight2);
+    // Overhead Industrial Fluorescent 2 (Ceiling Bay Secondary)
+    const rectLight2 = new THREE.RectAreaLight(isLight ? 0xedf2ff : 0xe0e7ff, 6.5, 340, 40);
+    rectLight2.position.set(0, 650, 250);
+    rectLight2.rotation.x = -Math.PI / 2;
+    scene.add(rectLight2);
 
-    // Rim light for crisp silhouettes
-    const dirLight3 = new THREE.DirectionalLight(isLight ? 0xc8d6e5 : 0x506070, isLight ? 1.2 : 0.9);
-    dirLight3.position.set(0, 800, -800);
-    scene.add(dirLight3);
+    // High-Precision Directional Key Light with Soft Contact Shadows
+    const keyLight = new THREE.DirectionalLight(isLight ? 0xfff5e6 : 0xffebd6, isLight ? 2.2 : 1.7);
+    keyLight.position.set(700, 1100, 800);
+    keyLight.castShadow = true;
+    keyLight.shadow.mapSize.width = 2048;
+    keyLight.shadow.mapSize.height = 2048;
+    keyLight.shadow.camera.near = 150;
+    keyLight.shadow.camera.far = 3200;
+    keyLight.shadow.camera.left = -750;
+    keyLight.shadow.camera.right = 750;
+    keyLight.shadow.camera.top = 750;
+    keyLight.shadow.camera.bottom = -750;
+    keyLight.shadow.bias = -0.0004;
+    keyLight.shadow.radius = 2.0;
+    scene.add(keyLight);
 
-    const bottomLight = new THREE.DirectionalLight(isLight ? 0xd0d8e0 : 0x2a3540, isLight ? 0.8 : 0.6);
-    bottomLight.position.set(0, -600, 0);
-    scene.add(bottomLight);
+    // Work Lamp SpotLight: Focused directly onto cutter & workpiece
+    const workLamp = new THREE.SpotLight(0xfffbeb, 4.2, 1200, Math.PI / 5, 0.35, 1.2);
+    workLamp.position.set(120, 280, 240);
+    workLamp.target.position.copy(TABLE_SURFACE_POS);
+    scene.add(workLamp);
+    scene.add(workLamp.target);
 
-    // Factory floor
-    const floorGeo = new THREE.PlaneGeometry(2400, 2400);
-    const floorMat = new THREE.MeshStandardMaterial({
-      color: isLight ? 0xc0c8d0 : 0x1a2030,
-      roughness: isLight ? 0.55 : 0.7,
-      metalness: 0.1,
+    // Silhouette Rim Light
+    const rimLight = new THREE.DirectionalLight(isLight ? 0xc8d6e5 : 0x475569, isLight ? 1.3 : 1.0);
+    rimLight.position.set(0, 800, -850);
+    scene.add(rimLight);
+
+    // ================= Photorealistic Epoxy Floor & Shop Boundary =================
+    const floorGeo = new THREE.PlaneGeometry(3200, 3200);
+    const floorTex = proceduralTextures.getEpoxyFloorTexture(1024, isLight);
+    const floorMat = new THREE.MeshPhysicalMaterial({
+      map: floorTex,
+      roughness: 0.28,
+      metalness: 0.08,
+      clearcoat: 0.65,
+      clearcoatRoughness: 0.15,
+      envMapIntensity: 1.4
     });
     const floor = new THREE.Mesh(floorGeo, floorMat);
     floor.rotation.x = -Math.PI / 2;
@@ -161,21 +235,78 @@ export default function Viewport3D({
     floor.receiveShadow = true;
     scene.add(floor);
 
-    const gridColor1 = isLight ? 0x9aa8b8 : 0x2a3848;
-    const gridColor2 = isLight ? 0xb8c4d0 : 0x1e2838;
-    const grid = new THREE.GridHelper(2400, 48, gridColor1, gridColor2);
-    grid.position.y = -419.5;
+    // Contact Shadow Disc Under Machine Base
+    const shadowGeo = new THREE.PlaneGeometry(1600, 1600);
+    const shadowTex = proceduralTextures.getContactShadowTexture(512);
+    const shadowMat = new THREE.MeshBasicMaterial({
+      map: shadowTex,
+      transparent: true,
+      opacity: 0.75,
+      depthWrite: false
+    });
+    const shadowMesh = new THREE.Mesh(shadowGeo, shadowMat);
+    shadowMesh.rotation.x = -Math.PI / 2;
+    shadowMesh.position.set(0, -419.8, 0);
+    scene.add(shadowMesh);
+
+    // Safety Hazard Perimeter Stripe around CNC footprint
+    const hazardTex = proceduralTextures.getHazardStripeTexture(512, 64);
+    const hazardMat = new THREE.MeshBasicMaterial({ map: hazardTex });
+    
+    const tapeThickness = 28;
+    const tapeW = 1200;
+    const tapeL = 1300;
+
+    const tapeNorth = new THREE.Mesh(new THREE.PlaneGeometry(tapeW, tapeThickness), hazardMat);
+    tapeNorth.rotation.x = -Math.PI / 2;
+    tapeNorth.position.set(0, -419.5, tapeL / 2);
+    scene.add(tapeNorth);
+
+    const tapeSouth = new THREE.Mesh(new THREE.PlaneGeometry(tapeW, tapeThickness), hazardMat);
+    tapeSouth.rotation.x = -Math.PI / 2;
+    tapeSouth.position.set(0, -419.5, -tapeL / 2);
+    scene.add(tapeSouth);
+
+    const tapeWest = new THREE.Mesh(new THREE.PlaneGeometry(tapeThickness, tapeL), hazardMat);
+    tapeWest.rotation.x = -Math.PI / 2;
+    tapeWest.position.set(-tapeW / 2, -419.5, 0);
+    scene.add(tapeWest);
+
+    const tapeEast = new THREE.Mesh(new THREE.PlaneGeometry(tapeThickness, tapeL), hazardMat);
+    tapeEast.rotation.x = -Math.PI / 2;
+    tapeEast.position.set(tapeW / 2, -419.5, 0);
+    scene.add(tapeEast);
+
+    // Anti-Fatigue Operator Floor Mat in front of CNC
+    const matGeo = new THREE.PlaneGeometry(750, 360);
+    const matFloorMat = new THREE.MeshPhysicalMaterial({
+      color: 0x1e293b,
+      roughness: 0.88,
+      metalness: 0.02
+    });
+    const antiFatigueMat = new THREE.Mesh(matGeo, matFloorMat);
+    antiFatigueMat.rotation.x = -Math.PI / 2;
+    antiFatigueMat.position.set(0, -419.2, tapeL / 2 + 200);
+    antiFatigueMat.receiveShadow = true;
+    scene.add(antiFatigueMat);
+
+    // Subtle Grid Helper
+    const gridColor1 = isLight ? 0x94a3b8 : 0x334155;
+    const gridColor2 = isLight ? 0xcbd5e1 : 0x1e293b;
+    const grid = new THREE.GridHelper(3200, 64, gridColor1, gridColor2);
+    grid.position.y = -419.0;
     grid.material.transparent = true;
-    grid.material.opacity = 0.35;
+    grid.material.opacity = 0.22;
     scene.add(grid);
     gridRef.current = grid;
 
-    // Create Machine Hierarchy Groups (100% strictly from user's CAD model main.STEP)
+    // ================= Machine Hierarchy Groups =================
     const machineRoot = new THREE.Group();
     scene.add(machineRoot);
     machineRootRef.current = machineRoot;
 
     const enclosureGroup = new THREE.Group();
+    const cornerJointsGroup = new THREE.Group();
     const gantryGroup = new THREE.Group();
     const tableGroup = new THREE.Group();
     const spindleGroup = new THREE.Group();
@@ -186,19 +317,14 @@ export default function Viewport3D({
     const particleGroup = new THREE.Group();
 
     machineRoot.add(enclosureGroup);
+    machineRoot.add(cornerJointsGroup);
     machineRoot.add(tableGroup);
     machineRoot.add(gantryGroup);
     gantryGroup.add(spindleGroup);
     spindleGroup.add(toolGroup);
 
     enclosureGroupRef.current = enclosureGroup;
-
-    // Mount workpiece, stock & toolpath to table so they follow Y depth kinematics
-    tableGroup.add(stockGroup);
-    tableGroup.add(workpieceGroup);
-    tableGroup.add(toolpathGroup);
-    tableGroup.add(particleGroup);
-
+    cornerJointsGroupRef.current = cornerJointsGroup;
     gantryGroupRef.current = gantryGroup;
     tableGroupRef.current = tableGroup;
     spindleGroupRef.current = spindleGroup;
@@ -208,113 +334,145 @@ export default function Viewport3D({
     toolpathGroupRef.current = toolpathGroup;
     particleGroupRef.current = particleGroup;
 
-    // Origin Position for workpiece elements on the CAD table
-    const stockHeight = stockConfig?.height || 30.0;
-    const originPos = new THREE.Vector3(
-      TABLE_SURFACE_POS.x,
-      TABLE_SURFACE_POS.y + stockHeight,
-      TABLE_SURFACE_POS.z
-    );
-    stockGroup.position.copy(originPos);
-    workpieceGroup.position.copy(originPos);
-    toolpathGroup.position.copy(originPos);
-    particleGroup.position.copy(originPos);
+    // Workpiece & swarf mount to table so they follow kinematics
+    tableGroup.add(stockGroup);
+    tableGroup.add(workpieceGroup);
+    tableGroup.add(toolpathGroup);
+    tableGroup.add(particleGroup);
 
-    // ================= Dynamic Metal Swarf / Chip Particles =================
-    const particleCount = 140;
-    const particleGeo = new THREE.BufferGeometry();
-    const particlePositions = new Float32Array(particleCount * 3);
-    const particleVelocities = [];
+    // ================= Status Indicator LEDs on Spindle Housing =================
+    const ledGeo = new THREE.SphereGeometry(3.5, 12, 12);
+    
+    // Green (Running)
+    const ledGreenMat = new THREE.MeshBasicMaterial({ color: 0x22c55e });
+    const ledGreen = new THREE.Mesh(ledGeo, ledGreenMat);
+    ledGreen.position.set(-208.16 - 20, 245, 217.64);
+    ledGreenRef.current = ledGreen;
+    spindleGroup.add(ledGreen);
 
-    for (let i = 0; i < particleCount; i++) {
-      particlePositions[i * 3] = 0;
-      particlePositions[i * 3 + 1] = 0;
-      particlePositions[i * 3 + 2] = 0;
-      particleVelocities.push({
-        vx: (Math.random() - 0.5) * 16,
-        vy: Math.random() * 10 + 3,
-        vz: (Math.random() - 0.5) * 16,
-        life: Math.random()
-      });
-    }
-    particleGeo.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
-    const initialPreset = MATERIAL_PRESETS[stockConfig?.material] || MATERIAL_PRESETS.al6061;
-    const particleMat = new THREE.PointsMaterial({
-      color: initialPreset.chipColor,
-      size: 4.0,
-      transparent: true,
-      opacity: 0.90
-    });
-    const chipParticles = new THREE.Points(particleGeo, particleMat);
-    chipParticles.visible = false;
-    particleGroup.add(chipParticles);
+    // Yellow (Paused / Hold)
+    const ledYellowMat = new THREE.MeshBasicMaterial({ color: 0xeab308 });
+    const ledYellow = new THREE.Mesh(ledGeo, ledYellowMat);
+    ledYellow.position.set(-208.16, 245, 217.64);
+    ledYellowRef.current = ledYellow;
+    spindleGroup.add(ledYellow);
 
-    chipGeoRef.current = particleGeo;
-    chipMatRef.current = particleMat;
-    chipParticlesRef.current = chipParticles;
-    chipVelocitiesRef.current = particleVelocities;
+    // Red (Alarm / Limit)
+    const ledRedMat = new THREE.MeshBasicMaterial({ color: 0xef4444 });
+    const ledRed = new THREE.Mesh(ledGeo, ledRedMat);
+    ledRed.position.set(-208.16 + 20, 245, 217.64);
+    ledRedRef.current = ledRed;
+    spindleGroup.add(ledRed);
 
-    // Bind Kinematic Groups to Engine
+    // ================= Chip Physics Engine (Instanced 3D Swarf) =================
+    const chipEngine = new ChipPhysicsEngine(800);
+    chipEngineRef.current = chipEngine;
+    particleGroup.add(chipEngine.mesh);
+
+    // ================= Coolant Simulation Engine (Spray + Mist + Pool) =================
+    const coolantSim = new CoolantSimulation(240, 35);
+    coolantSimRef.current = coolantSim;
+    tableGroup.add(coolantSim.group);
+
+    // Connect kinematic groups
     if (kinematics) {
-      kinematics.setStockConfig(stockConfig);
       kinematics.bindGroups({
         gantryX: gantryGroup,
         tableY: tableGroup,
         spindleZ: spindleGroup,
-        tool: toolGroup
+        tool: toolGroup,
+        enclosure: enclosureGroup
       });
     }
 
-    // Load 100% original CAD subassembly models extracted from main.STEP
+
+    // Load Blender-Grade CAD Assemblies with Procedural PBR Textures
     loadMachineModels(machineRoot, enclosureGroup, gantryGroup, tableGroup, spindleGroup, toolGroup, theme);
 
     // ================= Animation Loop =================
     let animId;
+    let lastTime = performance.now();
+
     const animate = () => {
       animId = requestAnimationFrame(animate);
-      controls.update();
 
-      // Tool Spindle Rotation
-      if (kinematics && kinematics.spindleActive && toolGroupRef.current) {
-        toolGroupRef.current.rotation.y += 0.35;
-      }
+      const now = performance.now();
+      const dt = Math.min(0.1, (now - lastTime) / 1000.0);
+      lastTime = now;
+
+      controls.update();
 
       const curTool = kinematics ? kinematics.currentPos : { x: 0, y: 0, z: 25 };
       const isCutting = kinematics && kinematics.spindleActive && (curTool.z <= 0.05);
+      const rpm = kinematics?.spindleRPM || 8000;
+      const mrr = materialEngine ? materialEngine.currentMRR : 0;
+      const stockHeight = stockConfig?.height || 30.0;
 
-      // Dynamic Chip Spray with Gravity
-      if (chipParticlesRef.current && chipGeoRef.current) {
-        if (isCutting) {
-          chipParticlesRef.current.visible = true;
-          const posAttr = chipGeoRef.current.attributes.position;
-          const vels = chipVelocitiesRef.current;
+      // 1. Tool Spindle Rotation proportional to RPM
+      if (kinematics && kinematics.spindleActive && toolGroupRef.current) {
+        const radPerSec = (rpm * Math.PI * 2) / 60.0;
+        toolGroupRef.current.rotation.y += Math.min(1.5, radPerSec * dt);
+      }
 
-          for (let i = 0; i < particleCount; i++) {
-            const v = vels[i];
-            v.life += 0.045;
-            if (v.life >= 1.0) {
-              v.life = 0;
-              posAttr.setXYZ(i, curTool.x, curTool.z, curTool.y);
-              const angle = Math.random() * Math.PI * 2;
-              const spd = Math.random() * 22 + 6;
-              v.vx = Math.cos(angle) * spd;
-              v.vy = Math.random() * 12 + 5;
-              v.vz = Math.sin(angle) * spd;
-            } else {
-              v.vy -= 0.65; // Gravity pull downward
-              const px = posAttr.getX(i) + v.vx * 0.12;
-              const py = Math.max(-stockHeight, posAttr.getY(i) + v.vy * 0.12);
-              const pz = posAttr.getZ(i) + v.vz * 0.12;
-              posAttr.setXYZ(i, px, py, pz);
-            }
-          }
-          posAttr.needsUpdate = true;
-        } else {
-          chipParticlesRef.current.visible = false;
+      // 2. Pulse Status Indicator LEDs
+      const pulse = Math.sin(now * 0.008) * 0.35 + 0.65;
+      if (ledGreenRef.current) {
+        const isRunning = kinematics && kinematics.spindleActive;
+        ledGreenRef.current.visible = isRunning;
+        if (isRunning) ledGreenRef.current.scale.setScalar(pulse);
+      }
+      if (ledYellowRef.current) {
+        const isPaused = simState === 'paused';
+        ledYellowRef.current.visible = isPaused;
+        if (isPaused) ledYellowRef.current.scale.setScalar(pulse);
+      }
+      if (ledRedRef.current) {
+        const isAlarm = kinematics && kinematics.limitsExceeded;
+        ledRedRef.current.visible = isAlarm;
+        if (isAlarm) ledRedRef.current.scale.setScalar(pulse);
+      }
+
+      // 3. Chip Physics Update (Verlet, ejection, collision, accumulation)
+      if (chipEngineRef.current) {
+        chipEngineRef.current.update(dt, isCutting, curTool, 3.0, rpm, mrr, stockHeight);
+      }
+
+      // 4. Coolant Simulation Update
+      const shouldCoolantRun = coolantMode === 'flood' || (coolantMode === 'auto' && kinematics && kinematics.coolantActive);
+      if (coolantSimRef.current) {
+        coolantSimRef.current.setCoolantState(shouldCoolantRun, 'flood');
+        coolantSimRef.current.update(dt, curTool, rpm, isCutting);
+      }
+
+      // 5. Camera Shake on Heavy Roughing Cuts
+      if (motionPlannerRef.current) {
+        if (isCutting && mrr > 5) {
+          motionPlannerRef.current.triggerImpact(mrr);
+        }
+        const shake = motionPlannerRef.current.getShakeOffset();
+        if (shake.x !== 0 || shake.y !== 0) {
+          camera.position.x += shake.x;
+          camera.position.y += shake.y;
+          camera.position.z += shake.z;
         }
       }
 
-      renderer.render(scene, camera);
+      // 6. Follow Cam (Tracking Cutter Zone)
+      if (followCam && curTool) {
+        const targetWorld = new THREE.Vector3(
+          TABLE_SURFACE_POS.x + curTool.x,
+          TABLE_SURFACE_POS.y + stockHeight + curTool.z,
+          217.64
+        );
+        controls.target.lerp(targetWorld, 0.04);
+      }
+
+      // 7. Render through EffectComposer Post-Processing Pipeline
+      if (renderPipelineRef.current) {
+        renderPipelineRef.current.render(dt);
+      } else {
+        renderer.render(scene, camera);
+      }
     };
     animate();
 
@@ -325,6 +483,9 @@ export default function Viewport3D({
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
       renderer.setSize(w, h);
+      if (renderPipelineRef.current) {
+        renderPipelineRef.current.setSize(w, h);
+      }
     };
     window.addEventListener('resize', handleResize);
 
@@ -334,6 +495,10 @@ export default function Viewport3D({
       if (renderer.domElement && container.contains(renderer.domElement)) {
         container.removeChild(renderer.domElement);
       }
+      if (chipEngineRef.current) chipEngineRef.current.dispose();
+      if (coolantSimRef.current) coolantSimRef.current.dispose();
+      if (renderPipelineRef.current) renderPipelineRef.current.dispose();
+      if (workshopEnvRef.current) workshopEnvRef.current.dispose();
       renderer.dispose();
     };
   }, []);
@@ -342,50 +507,83 @@ export default function Viewport3D({
   useEffect(() => {
     if (!sceneRef.current || !rendererRef.current) return;
     const isLight = theme === 'light';
-    sceneRef.current.background = new THREE.Color(isLight ? 0xe8ecf1 : 0x0a0f1a);
-    rendererRef.current.toneMappingExposure = isLight ? 1.0 : 0.85;
+    sceneRef.current.background = new THREE.Color(isLight ? 0xe2e8f0 : 0x070b12);
+    if (sceneRef.current.fog) {
+      sceneRef.current.fog.color.setHex(isLight ? 0xe2e8f0 : 0x070b12);
+    }
+    rendererRef.current.toneMappingExposure = isLight ? 1.25 : 1.15;
+    if (workshopEnvRef.current) {
+      sceneRef.current.environment = workshopEnvRef.current.generate(isLight);
+    }
     if (gridRef.current) {
       gridRef.current.material.color.setHex(isLight ? 0x94a3b8 : 0x334155);
     }
   }, [theme]);
 
-  // Load Machine Subassemblies from CAD files
+  // Update Quality Tier
+  useEffect(() => {
+    if (renderPipelineRef.current) {
+      renderPipelineRef.current.setQuality(qualityTier);
+    }
+    if (materialEngine) {
+      if (qualityTier === 'low') {
+        materialEngine.setGridResolution(160, 120);
+      } else if (qualityTier === 'medium') {
+        materialEngine.setGridResolution(240, 180);
+      } else {
+        materialEngine.setGridResolution(320, 240);
+      }
+    }
+  }, [qualityTier, materialEngine]);
+
+  // Load Machine Subassemblies with Blender-Grade Procedural PBR Textures
   const loadMachineModels = (root, enclosure, gantry, table, spindle, tool, currentTheme) => {
     const loader = new GLTFLoader();
     setModelLoading(true);
 
+    // 1. Frame Base: Heavy Cast Slate / Cast Iron with Perlin Bump Map
+    const castIronBump = proceduralTextures.getCastIronBump(512);
     const frameMaterial = new THREE.MeshPhysicalMaterial({
-      color: 0x475569,       // Cast slate machine base
-      metalness: 0.5,
-      roughness: 0.35,
-      clearcoat: 0.4,
+      color: 0x334155,       // Cast machine base
+      bumpMap: castIronBump,
+      bumpScale: 0.85,
+      metalness: 0.58,
+      roughness: 0.40,
+      clearcoat: 0.35,
       clearcoatRoughness: 0.25,
-      envMapIntensity: 1.5,
-      side: THREE.DoubleSide,
+      envMapIntensity: 1.6,
+      side: THREE.DoubleSide
     });
 
+    // 2. Enclosure Glass: Polycarbonate Safety Glass with Technical CAD Clarity & Subtle Reflections
     const enclosureGlassMaterial = new THREE.MeshPhysicalMaterial({
-      color: 0x94a3b8,       // Tinted safety polycarbonate glass
-      metalness: 0.1,
-      roughness: 0.08,
-      transmission: 0.85,
-      opacity: 0.32,
+      color: 0xf1f5f9,
+      transmission: 0.94,
+      opacity: 0.40,
       transparent: true,
+      roughness: 0.05,
+      ior: 1.49,             // Polycarbonate IOR
+      thickness: 4.0,        // 4mm physical safety glass
+      attenuationColor: new THREE.Color(0.92, 0.96, 0.99),
+      attenuationDistance: 50.0,
       clearcoat: 1.0,
-      clearcoatRoughness: 0.05,
-      ior: 1.5,
-      envMapIntensity: 1.5,
+      clearcoatRoughness: 0.03,
+      envMapIntensity: 2.2,
       depthWrite: false,
-      side: THREE.DoubleSide,
+      side: THREE.DoubleSide
     });
 
+    // 3. Enclosure Solid: Clean Sheet Metal Powdercoat
+    const powdercoatBump = proceduralTextures.getPowdercoatBump(512);
     const enclosureSolidMaterial = new THREE.MeshPhysicalMaterial({
-      color: 0x64748b,       // Clean industrial light grey powdercoat
+      color: 0x64748b,
+      bumpMap: powdercoatBump,
+      bumpScale: 0.45,
       metalness: 0.35,
       roughness: 0.35,
       clearcoat: 0.5,
-      envMapIntensity: 1.3,
-      side: THREE.DoubleSide,
+      envMapIntensity: 1.4,
+      side: THREE.DoubleSide
     });
 
     enclosureMaterialsRef.current = {
@@ -393,40 +591,89 @@ export default function Viewport3D({
       solid: enclosureSolidMaterial
     };
 
+    // 4. Gantry: Anodized Aerospace Aluminum with Brushed Grain Normal Map
+    const brushedNormal = proceduralTextures.getBrushedMetalNormal(512);
     const gantryMaterial = new THREE.MeshPhysicalMaterial({
-      color: 0xdde6ed,       // Anodized precision aluminum
-      metalness: 0.88,
-      roughness: 0.15,
-      clearcoat: 0.3,
-      envMapIntensity: 2.0,
-      side: THREE.DoubleSide,
+      color: 0xdbe4ee,
+      normalMap: brushedNormal,
+      normalScale: new THREE.Vector2(0.35, 0.35),
+      metalness: 0.90,
+      roughness: 0.16,
+      clearcoat: 0.40,
+      clearcoatRoughness: 0.12,
+      envMapIntensity: 2.2,
+      side: THREE.DoubleSide
     });
 
+    // 5. Table: Precision Ground Tool Steel with Cross-Hatch Grinding Normal Map
+    const groundNormal = proceduralTextures.getGroundSteelNormal(512);
     const tableMaterial = new THREE.MeshPhysicalMaterial({
-      color: 0x94a3b8,       // Precision ground tool steel
-      metalness: 0.92,
-      roughness: 0.18,
-      envMapIntensity: 1.8,
-      side: THREE.DoubleSide,
+      color: 0x94a3b8,
+      normalMap: groundNormal,
+      normalScale: new THREE.Vector2(0.5, 0.5),
+      metalness: 0.94,
+      roughness: 0.16,
+      clearcoat: 0.50,
+      clearcoatRoughness: 0.10,
+      envMapIntensity: 2.0,
+      side: THREE.DoubleSide
     });
 
+    // 6. Spindle Housing & Motor Carriage: Precision Billet Aluminium in Pure White-Silver Finish
     const spindleMaterial = new THREE.MeshPhysicalMaterial({
-      color: 0x2563eb,       // Vibrant industrial electric blue
-      metalness: 0.45,
-      roughness: 0.20,
-      clearcoat: 0.85,
-      clearcoatRoughness: 0.1,
-      envMapIntensity: 1.8,
-      side: THREE.DoubleSide,
+      color: 0xf8fafc,                  // Pure white aluminium / brilliant satin silver
+      normalMap: brushedNormal,
+      normalScale: new THREE.Vector2(0.35, 0.35),
+      metalness: 0.92,                  // High metallic luster of 6061-T6 aerospace aluminum
+      roughness: 0.14,                  // Fine CNC-milled surface
+      clearcoat: 0.85,                  // Clear protective anodize sheen
+      clearcoatRoughness: 0.08,
+      envMapIntensity: 2.6,             // Crisp HDRI workshop reflections
+      side: THREE.DoubleSide
     });
 
+    // 7. Tool: Mirror-Polished Tungsten Carbide
     const toolMaterial = new THREE.MeshPhysicalMaterial({
-      color: 0xf8fafc,       // Tungsten carbide mirror silver
+      color: 0xf8fafc,
       metalness: 0.98,
       roughness: 0.04,
-      envMapIntensity: 2.5,
-      side: THREE.DoubleSide,
+      clearcoat: 0.90,
+      clearcoatRoughness: 0.04,
+      envMapIntensity: 2.8,
+      side: THREE.DoubleSide
     });
+
+    // 8. Base Corner Joint Blocks: Royal Blue Anodized Aluminum / Satin Aluminium
+    const cornerJointsBlueMaterial = new THREE.MeshPhysicalMaterial({
+      color: 0x1d4ed8,                  // Deep Royal / Cobalt Blue anodized (exact match to user CAD render)
+      bumpMap: powdercoatBump,
+      bumpScale: 0.25,
+      metalness: 0.70,
+      roughness: 0.24,
+      clearcoat: 0.65,
+      clearcoatRoughness: 0.10,
+      envMapIntensity: 2.0,
+      side: THREE.DoubleSide
+    });
+
+    const cornerJointsAluMaterial = new THREE.MeshPhysicalMaterial({
+      color: 0xdbe4ee,                  // Clear Anodized Satin Aluminium
+      bumpMap: powdercoatBump,
+      bumpScale: 0.20,
+      metalness: 0.88,
+      roughness: 0.18,
+      clearcoat: 0.70,
+      clearcoatRoughness: 0.10,
+      envMapIntensity: 2.2,
+      side: THREE.DoubleSide
+    });
+
+    cornerMaterialsRef.current = {
+      blue: cornerJointsBlueMaterial,
+      aluminum: cornerJointsAluMaterial
+    };
+
+    const cornerJointsMaterial = cornerColor === 'aluminum' ? cornerJointsAluMaterial : cornerJointsBlueMaterial;
 
     const applyMaterial = (object, mat, castShadow = true) => {
       object.traverse(child => {
@@ -451,12 +698,42 @@ export default function Viewport3D({
       });
     };
 
-    const loadPart = (url, parentGroup, mat, castShadow = true) => {
+    // Collet Centerline Offset in MACHINE_CENTER coordinates:
+    // Tool center CAD: (596.34, 1504.66, 1959.97), MACHINE_CENTER: (804.5, 1384.77, 1742.33)
+    const TOOL_COLLET_OFFSET = new THREE.Vector3(-208.16, 0, 217.64);
+    tool.position.copy(TOOL_COLLET_OFFSET);
+
+    const loadPart = (url, parentGroup, mat, castShadow = true, localOffset = null) => {
       return new Promise((resolve) => {
         loader.load(url, (gltf) => {
           const model = gltf.scene;
           applyMaterial(model, mat, castShadow);
           model.position.sub(MACHINE_CENTER);
+          if (localOffset) {
+            model.position.sub(localOffset);
+          }
+
+          // Technical CAD edge outlines for enclosure acrylic panels matching user render
+          if (url.includes('enclosure.glb')) {
+            model.traverse(child => {
+              if (child.isMesh) {
+                try {
+                  const edgeGeo = new THREE.EdgesGeometry(child.geometry, 20);
+                  const edgeMat = new THREE.LineBasicMaterial({
+                    color: 0x334155,
+                    linewidth: 1.5,
+                    transparent: true,
+                    opacity: 0.65
+                  });
+                  const edges = new THREE.LineSegments(edgeGeo, edgeMat);
+                  child.add(edges);
+                } catch (e) {
+                  // ignore
+                }
+              }
+            });
+          }
+
           parentGroup.add(model);
           resolve();
         }, undefined, (err) => {
@@ -468,18 +745,20 @@ export default function Viewport3D({
 
     Promise.all([
       loadPart('/models/frame_base.glb', root, frameMaterial, true),
+      loadPart('/models/corner_joints.glb', cornerJointsGroup, cornerJointsMaterial, true),
       loadPart('/models/enclosure.glb', enclosure, enclosureGlassMaterial, false),
       loadPart('/models/gantry_x.glb', gantry, gantryMaterial, true),
       loadPart('/models/table.glb', table, tableMaterial, true),
       loadPart('/models/spindle_z.glb', spindle, spindleMaterial, true),
-      loadPart('/models/tool.glb', tool, toolMaterial, true)
+      loadPart('/models/tool.glb', tool, toolMaterial, true, TOOL_COLLET_OFFSET)
     ]).then(() => {
-      enclosure.visible = false;
+      enclosure.visible = enclosureMode !== 'hide';
       setModelLoading(false);
       if (kinematics) {
         kinematics.applyTransform();
       }
     });
+
   };
 
   // ================= Update Stock & Volumetric Solid Metal Billet =================
@@ -499,13 +778,13 @@ export default function Viewport3D({
     if (toolpathGroupRef.current) toolpathGroupRef.current.position.copy(originPos);
     if (particleGroupRef.current) particleGroupRef.current.position.copy(originPos);
 
-    // Update Chip Particles Color based on material preset
+    // Update Chip Physics Engine material preset
     const preset = MATERIAL_PRESETS[stockConfig.material] || MATERIAL_PRESETS.al6061;
-    if (chipMatRef.current) {
-      chipMatRef.current.color.setHex(preset.chipColor);
+    if (chipEngineRef.current) {
+      chipEngineRef.current.setMaterialPreset(stockConfig.material, preset);
     }
 
-    // Update Dynamic Volumetric 3D Stock Billet resting on CAD table
+    // Update Dynamic Volumetric 3D Stock Billet
     while (group.children.length > 0) {
       group.remove(group.children[0]);
     }
@@ -513,10 +792,10 @@ export default function Viewport3D({
     if (workpieceMode !== 'partOnly') {
       materialEngine.reset(stockConfig);
       const billetMesh = materialEngine.createMesh(stockConfig.material);
-      materialEngine.setDisplayMode(workpieceMode);
+      materialEngine.setDisplayMode(workpieceMode === 'heatmap' ? 'heatmap' : workpieceMode === 'ghost' ? 'ghost' : 'solid');
       group.add(billetMesh);
 
-      // Add clean bounding edges
+      // Clean bounding wireframe box
       const boxGeo = new THREE.BoxGeometry(stockConfig.width, stockConfig.height, stockConfig.length);
       const edges = new THREE.EdgesGeometry(boxGeo);
       const edgeLine = new THREE.LineSegments(
@@ -530,6 +809,8 @@ export default function Viewport3D({
       );
       edgeLine.position.set(0, -stockConfig.height / 2, 0);
       group.add(edgeLine);
+
+      setSurfaceRoughness(materialEngine.getSurfaceRoughness());
     }
 
   }, [stockConfig, materialEngine, workpieceMode]);
@@ -543,9 +824,7 @@ export default function Viewport3D({
       group.remove(group.children[0]);
     }
 
-    // In solid mode, hide inner target part so the user sees the real solid metal block
-    // In ghost or partOnly mode, render the target CAD part
-    if (!userPartFile || workpieceMode === 'solid') return;
+    if (!userPartFile || (workpieceMode !== 'ghost' && workpieceMode !== 'partOnly')) return;
 
     setCadLoading(true);
     cadImporter.loadCAD(userPartFile).then(({ mesh, geometry, stats }) => {
@@ -553,7 +832,6 @@ export default function Viewport3D({
       const bb = geometry.boundingBox;
       const center = bb.getCenter(new THREE.Vector3());
 
-      // Center the part in XY, rest bottom on table surface (Z=-stockHeight)
       mesh.position.set(-center.x, -bb.max.y, -center.z);
 
       mesh.traverse(child => {
@@ -655,9 +933,24 @@ export default function Viewport3D({
     }
   };
 
-  // Cycle Workpiece Mode: SOLID BILLET -> GHOST TARGET -> CAD PART ONLY
+  // Cycle Workpiece Mode: SOLID BILLET -> DEPTH HEATMAP -> GHOST CAD -> CAD PART ONLY
   const cycleWorkpieceMode = () => {
-    setWorkpieceMode(prev => prev === 'solid' ? 'ghost' : prev === 'ghost' ? 'partOnly' : 'solid');
+    setWorkpieceMode(prev => {
+      if (prev === 'solid') return 'heatmap';
+      if (prev === 'heatmap') return 'ghost';
+      if (prev === 'ghost') return 'partOnly';
+      return 'solid';
+    });
+  };
+
+  // Cycle Quality Tier: LOW -> MED -> HIGH -> ULTRA
+  const cycleQualityTier = () => {
+    setQualityTier(prev => {
+      if (prev === 'low') return 'medium';
+      if (prev === 'medium') return 'high';
+      if (prev === 'high') return 'ultra';
+      return 'low';
+    });
   };
 
   // Camera preset views
@@ -697,6 +990,12 @@ export default function Viewport3D({
     controls.update();
   };
 
+  const handleBlowOffChips = () => {
+    if (chipEngineRef.current) {
+      chipEngineRef.current.blowOffChips();
+    }
+  };
+
   const currentPreset = MATERIAL_PRESETS[stockConfig?.material] || MATERIAL_PRESETS.al6061;
 
   return (
@@ -719,7 +1018,7 @@ export default function Viewport3D({
         }}>
           <RotateCw className="animate-spin" size={20} color="var(--accent-blue)" />
           <span style={{ fontSize: '14px', fontWeight: 600 }}>
-            {modelLoading ? 'Loading Machine Digital Twin (100% CAD)...' : 'Importing & Slicing CAD Geometry...'}
+            {modelLoading ? 'Initializing Blender-Grade Render Pipeline & PBR Models...' : 'Importing & Slicing CAD Geometry...'}
           </span>
         </div>
       )}
@@ -743,6 +1042,23 @@ export default function Viewport3D({
             PART ZOOM
           </button>
         </div>
+
+        {/* Follow Cam Tracking Toggle */}
+        <div className="glass-panel" style={{ borderRadius: '8px', padding: '4px', display: 'flex' }}>
+          <button 
+            onClick={() => setFollowCam(!followCam)} 
+            style={{ 
+              color: followCam ? 'var(--accent-cyan)' : 'var(--text-muted)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              fontWeight: followCam ? 600 : 400
+            }}
+            title="Auto-Follow Camera: tracks the cutter head during machining"
+          >
+            <Camera size={14} /> {followCam ? 'TRACKING' : 'FOLLOW CAM'}
+          </button>
+        </div>
       </div>
 
       {/* Top Right Digital Twin Display Controls */}
@@ -757,6 +1073,21 @@ export default function Viewport3D({
         zIndex: 5
       }}>
         <div className="glass-panel" style={{ borderRadius: '8px', padding: '4px', display: 'flex', gap: '4px' }}>
+          {/* Graphics Quality Selector */}
+          <button
+            onClick={cycleQualityTier}
+            style={{ 
+              color: qualityTier === 'ultra' ? '#7c3aed' : qualityTier === 'high' ? 'var(--accent-blue)' : 'var(--text-secondary)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              fontWeight: 600
+            }}
+            title="Cycle Graphics Quality: Low / Medium / High / Ultra"
+          >
+            <Sliders size={14} /> PBR: {qualityTier.toUpperCase()}
+          </button>
+
           {/* Machine Assembly Toggle */}
           <button
             onClick={() => {
@@ -769,6 +1100,47 @@ export default function Viewport3D({
             <Box size={14} /> Machine
           </button>
 
+          {/* Corner Joints Color: Royal Blue vs Aluminium White */}
+          <button
+            onClick={toggleCornerColor}
+            style={{ 
+              color: cornerColor === 'blue' ? '#2563eb' : 'var(--text-primary)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              fontWeight: 600
+            }}
+            title="Toggle Corner Joints Color: Royal Blue (CAD Render Match) / White Aluminium"
+          >
+            <span style={{
+              width: '8px',
+              height: '8px',
+              borderRadius: '50%',
+              background: cornerColor === 'blue' ? '#1d4ed8' : '#e2e8f0',
+              border: '1px solid #94a3b8'
+            }} />
+            Joints: {cornerColor === 'blue' ? 'BLUE' : 'ALU'}
+          </button>
+
+          {/* Assembly Mode Toggle: Factory CAD Rest (0 mm) vs Active Digital Twin Work */}
+          <button
+            onClick={() => {
+              const next = machineAssemblyMode === 'work' ? 'park' : 'work';
+              setMachineAssemblyMode(next);
+              if (kinematics) kinematics.setAssemblyMode(next);
+            }}
+            style={{ 
+              color: machineAssemblyMode === 'park' ? 'var(--accent-green)' : 'var(--accent-blue)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              fontWeight: 600
+            }}
+            title="Switch between 100% Factory CAD Assembly (PARK) and Active Machining Mode (WORK)"
+          >
+            <Sliders size={14} /> {machineAssemblyMode === 'park' ? 'CAD REST (0mm)' : 'ACTIVE TWIN'}
+          </button>
+
           {/* Enclosure Mode Toggle */}
           <button
             onClick={cycleEnclosureMode}
@@ -778,24 +1150,41 @@ export default function Viewport3D({
               alignItems: 'center',
               gap: '4px'
             }}
-            title="Cycle Enclosure Cabinet: Hide / Tinted Glass / Solid"
+            title="Cycle Enclosure Cabinet: Hide / Tinted Safety Glass / Solid"
           >
             <ShieldAlert size={14} /> Door: {enclosureMode.toUpperCase()}
           </button>
 
-          {/* Workpiece Mode: Solid Billet / Ghost Target / CAD Part Only */}
+
+          {/* Workpiece Mode: Solid Billet / Depth Heatmap / Ghost Target / CAD Part Only */}
           <button
             onClick={cycleWorkpieceMode}
             style={{ 
-              color: workpieceMode === 'solid' ? 'var(--accent-cyan)' : workpieceMode === 'ghost' ? 'var(--accent-green)' : 'var(--accent-blue)',
+              color: workpieceMode === 'solid' ? 'var(--accent-cyan)' : workpieceMode === 'heatmap' ? '#f59e0b' : workpieceMode === 'ghost' ? 'var(--accent-green)' : 'var(--accent-blue)',
               display: 'flex',
               alignItems: 'center',
               gap: '4px',
               fontWeight: 600
             }}
-            title="Cycle Workpiece View Mode: Solid Billet (PBR) / Ghost Target Overlay / CAD Part Only"
+            title="Cycle Workpiece View Mode: Solid Billet (PBR) / Depth Heatmap / Ghost CAD / Part Only"
           >
-            <Layers size={14} /> Workpiece: {workpieceMode === 'solid' ? 'SOLID BILLET' : workpieceMode === 'ghost' ? 'GHOST CAD' : 'PART ONLY'}
+            {workpieceMode === 'heatmap' ? <Flame size={14} /> : <Layers size={14} />} 
+            Workpiece: {workpieceMode === 'solid' ? 'SOLID PBR' : workpieceMode === 'heatmap' ? 'HEATMAP' : workpieceMode === 'ghost' ? 'GHOST CAD' : 'PART ONLY'}
+          </button>
+
+          {/* Coolant Mode */}
+          <button
+            onClick={() => setCoolantMode(prev => prev === 'auto' ? 'flood' : prev === 'flood' ? 'off' : 'auto')}
+            style={{ 
+              color: coolantMode === 'off' ? 'var(--text-muted)' : '#06b6d4',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              fontWeight: 600
+            }}
+            title="Coolant Flow Mode: AUTO (G-code M8/M9) / FORCE FLOOD / OFF"
+          >
+            <Droplets size={14} /> Coolant: {coolantMode.toUpperCase()}
           </button>
 
           {/* Toolpath Toggle */}
@@ -806,46 +1195,125 @@ export default function Viewport3D({
           >
             Toolpath
           </button>
+
+          {/* Clean Chips / Swarf Blow-off */}
+          <button
+            onClick={handleBlowOffChips}
+            style={{ color: 'var(--text-muted)' }}
+            title="Blow-Off Swarf / Clean Table Chips"
+          >
+            <Wind size={14} /> Clean
+          </button>
         </div>
 
-        {/* Live Material Badge */}
-        <div className="glass-panel" style={{
-          padding: '4px 10px',
-          borderRadius: '6px',
-          fontSize: '11px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px'
-        }}>
-          <span style={{
-            width: '10px',
-            height: '10px',
-            borderRadius: '50%',
-            background: `#${currentPreset.chipColor.toString(16).padStart(6, '0')}`,
-            boxShadow: '0 0 6px rgba(0,0,0,0.2)'
-          }} />
-          <span style={{ color: 'var(--text-secondary)' }}>Material:</span>
-          <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{currentPreset.name}</span>
-          <span style={{ color: 'var(--text-muted)', fontSize: '10px' }}>({currentPreset.density} g/cm³)</span>
+        {/* Exploded CAD View Inspection Slider */}
+        <div className="glass-panel" style={{ borderRadius: '8px', padding: '4px 10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600 }}>EXPLODED CAD VIEW:</span>
+          <input 
+            type="range" 
+            min="0" 
+            max="1" 
+            step="0.02" 
+            value={explodedFactor} 
+            onChange={(e) => {
+              const val = parseFloat(e.target.value);
+              setExplodedFactor(val);
+              if (kinematics) kinematics.setExplodedFactor(val);
+            }}
+            style={{ width: '80px', cursor: 'pointer', accentColor: 'var(--accent-cyan)' }}
+            title="Controlled smooth disassembly of subassemblies for internal CAD inspection"
+          />
+          <span style={{ fontSize: '11px', fontFamily: 'monospace', color: explodedFactor > 0 ? 'var(--accent-cyan)' : 'var(--text-muted)' }}>
+            {Math.round(explodedFactor * 100)}%
+          </span>
+        </div>
+
+        {/* Live Material & Surface Finish Badges */}
+
+        <div style={{ display: 'flex', gap: '6px' }}>
+          {/* Surface Metrology Badge */}
+          <div className="glass-panel" style={{
+            padding: '4px 10px',
+            borderRadius: '6px',
+            fontSize: '11px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px'
+          }}>
+            <span style={{ color: 'var(--text-secondary)' }}>Finish:</span>
+            <span style={{ fontWeight: 700, color: 'var(--accent-cyan)' }}>Ra {surfaceRoughness.Ra || 1.6} µm</span>
+            <span style={{ color: 'var(--text-muted)', fontSize: '10px' }}>({surfaceRoughness.isoGrade || 'N7'})</span>
+          </div>
+
+          {/* Live Material Badge */}
+          <div className="glass-panel" style={{
+            padding: '4px 10px',
+            borderRadius: '6px',
+            fontSize: '11px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            <span style={{
+              width: '10px',
+              height: '10px',
+              borderRadius: '50%',
+              background: `#${currentPreset.chipColor.toString(16).padStart(6, '0')}`,
+              boxShadow: '0 0 6px rgba(0,0,0,0.2)'
+            }} />
+            <span style={{ color: 'var(--text-secondary)' }}>Material:</span>
+            <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{currentPreset.name}</span>
+            <span style={{ color: 'var(--text-muted)', fontSize: '10px' }}>({currentPreset.density} g/cm³)</span>
+          </div>
         </div>
       </div>
 
-      {/* Axis Orientation Gizmo Overlay */}
-      <div className="glass-panel" style={{
+      {/* Axis Orientation Gizmo & Camera View Presets */}
+      <div style={{
         position: 'absolute',
         bottom: '16px',
         left: '16px',
-        padding: '6px 12px',
-        borderRadius: '6px',
-        fontSize: '12px',
         display: 'flex',
         alignItems: 'center',
-        gap: '12px',
-        fontFamily: 'var(--font-mono)'
+        gap: '8px',
+        zIndex: 5
       }}>
-        <span style={{ color: '#dc2626', fontWeight: 700 }}>X: +Right (Gantry)</span>
-        <span style={{ color: '#16a34a', fontWeight: 700 }}>Y: +Depth (Table)</span>
-        <span style={{ color: '#2563eb', fontWeight: 700 }}>Z: +Plunge (Spindle)</span>
+        <div className="glass-panel" style={{
+          padding: '6px 12px',
+          borderRadius: '6px',
+          fontSize: '12px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          fontFamily: 'var(--font-mono)'
+        }}>
+          <span style={{ color: '#dc2626', fontWeight: 700 }}>X: +Right (Gantry)</span>
+          <span style={{ color: '#16a34a', fontWeight: 700 }}>Y: +Depth (Table)</span>
+          <span style={{ color: '#2563eb', fontWeight: 700 }}>Z: +Plunge (Spindle)</span>
+        </div>
+
+        <div className="glass-panel" style={{
+          padding: '4px',
+          borderRadius: '6px',
+          display: 'flex',
+          gap: '4px'
+        }}>
+          <button onClick={() => setCameraView('iso')} style={{ padding: '3px 8px', fontSize: '11px' }} title="Isometric 3D View">
+            ISO
+          </button>
+          <button onClick={() => setCameraView('top')} style={{ padding: '3px 8px', fontSize: '11px' }} title="Top Plan View (XY)">
+            TOP
+          </button>
+          <button onClick={() => setCameraView('front')} style={{ padding: '3px 8px', fontSize: '11px' }} title="Front Elevation View (XZ)">
+            FRONT
+          </button>
+          <button onClick={() => setCameraView('right')} style={{ padding: '3px 8px', fontSize: '11px' }} title="Right Side View (YZ)">
+            RIGHT
+          </button>
+          <button onClick={() => setCameraView('cutter')} style={{ padding: '3px 8px', fontSize: '11px', color: 'var(--accent-blue)', fontWeight: 600 }} title="Zoom into Cutting Zone">
+            CUTTER
+          </button>
+        </div>
       </div>
     </div>
   );

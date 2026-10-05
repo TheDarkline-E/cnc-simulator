@@ -169,6 +169,48 @@ export default function StatusPanel({
           </div>
         </div>
 
+        {/* Real-time Surface Roughness & Metrology */}
+        <div style={{
+          background: 'var(--bg-primary)',
+          borderRadius: '8px',
+          border: '1px solid var(--border-color)',
+          padding: '12px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '8px'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.5px', color: 'var(--text-secondary)' }}>
+              SURFACE FINISH & METROLOGY
+            </span>
+            <span style={{ 
+              fontSize: '10px', 
+              fontWeight: 700, 
+              color: '#10b981', 
+              background: 'rgba(16, 185, 129, 0.12)', 
+              padding: '2px 6px', 
+              borderRadius: '4px' 
+            }}>
+              {dro.surfaceRoughness?.isoGrade || 'N7'}
+            </span>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '11px' }}>
+            <div style={{ background: 'var(--bg-tertiary)', padding: '6px 8px', borderRadius: '4px' }}>
+              <div style={{ color: 'var(--text-muted)', fontSize: '10px' }}>Arithmetic Mean Ra</div>
+              <div className="mono" style={{ fontSize: '13px', fontWeight: 700, color: 'var(--accent-cyan)', marginTop: '2px' }}>
+                {dro.surfaceRoughness?.Ra !== undefined ? dro.surfaceRoughness.Ra.toFixed(2) : '1.60'} µm
+              </div>
+            </div>
+            <div style={{ background: 'var(--bg-tertiary)', padding: '6px 8px', borderRadius: '4px' }}>
+              <div style={{ color: 'var(--text-muted)', fontSize: '10px' }}>Peak-to-Valley Rz</div>
+              <div className="mono" style={{ fontSize: '13px', fontWeight: 700, color: 'var(--accent-blue)', marginTop: '2px' }}>
+                {dro.surfaceRoughness?.Rz !== undefined ? dro.surfaceRoughness.Rz.toFixed(2) : '6.30'} µm
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Safety Checks & Limit Warnings */}
         {dro.limitsExceeded && (
           <div style={{

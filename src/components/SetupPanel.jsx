@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { 
   Cpu, Box, Wrench, Settings, Play, Plus, 
   Trash2, CheckCircle2, AlertTriangle, Layers, 
-  Upload, FileCode, Sparkles, ArrowRight, ShieldCheck
+  Upload, FileCode, ArrowRight, ShieldCheck
 } from 'lucide-react';
 import { MACHINE_SPECS } from '../engine/MachineKinematics';
 

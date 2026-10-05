@@ -45,12 +45,17 @@ export class MachineKinematics {
     this.limitsExceeded = false;
     this.lastError = null;
 
+    // Operating Modes: 'park' (exact factory CAD rest assembly) or 'work' (active machining / WCS tracking)
+    this.assemblyMode = 'park';
+    this.explodedFactor = 0.0; // 0.0 = 100% solid unbroken assembly, 1.0 = full CAD inspection explosion
+
     // References to Three.js Object3D groups
     this.groups = {
       gantryX: null,
       tableY: null,
       spindleZ: null,
-      tool: null
+      tool: null,
+      enclosure: null
     };
   }
 
@@ -61,12 +66,35 @@ export class MachineKinematics {
     }
   }
 
-  bindGroups({ gantryX, tableY, spindleZ, tool }) {
+  setAssemblyMode(mode) {
+    if (mode === 'park' || mode === 'work') {
+      this.assemblyMode = mode;
+      this.applyTransform();
+    }
+  }
+
+  setExplodedFactor(factor) {
+    this.explodedFactor = Math.max(0.0, Math.min(1.0, factor));
+    this.applyTransform();
+  }
+
+  bindGroups({ gantryX, tableY, spindleZ, tool, enclosure }) {
     this.groups.gantryX = gantryX;
     this.groups.tableY = tableY;
     this.groups.spindleZ = spindleZ;
     this.groups.tool = tool;
+    if (enclosure) this.groups.enclosure = enclosure;
     this.applyTransform();
+  }
+
+  setGroups(groups) {
+    this.bindGroups({
+      gantryX: groups.gantryX || groups.gantryGroup,
+      tableY: groups.tableY || groups.tableGroup,
+      spindleZ: groups.spindleZ || groups.spindleGroup,
+      tool: groups.tool || groups.toolGroup,
+      enclosure: groups.enclosure || groups.enclosureGroup
+    });
   }
 
   setWorkOrigin(x = 0, y = 0, z = 0) {
@@ -100,6 +128,11 @@ export class MachineKinematics {
       this.currentPos = { x: targetX, y: targetY, z: targetZ };
     }
 
+    // Auto-engage active work mode when machine is moving
+    if (this.assemblyMode === 'park') {
+      this.assemblyMode = 'work';
+    }
+
     this.applyTransform();
     return !this.limitsExceeded;
   }
@@ -114,43 +147,58 @@ export class MachineKinematics {
   }
 
   home() {
-    this.moveTo(
-      MACHINE_SPECS.homePosition.x,
-      MACHINE_SPECS.homePosition.y,
-      MACHINE_SPECS.homePosition.z,
-      true
-    );
+    this.currentPos = {
+      x: MACHINE_SPECS.homePosition.x,
+      y: MACHINE_SPECS.homePosition.y,
+      z: MACHINE_SPECS.homePosition.z
+    };
     this.isHomed = true;
+    this.applyTransform();
   }
 
   /**
    * Applies the current coordinates to the actual CAD subassemblies:
-   * 1. Gantry bridge is fixed across columns.
-   * 2. Spindle carriage slides in X and plunges vertically in Y (CNC Z).
-   * 3. Work table slides in Z (CNC Y depth) with stroke offset to meet spindle.
-   * 4. Tool rotates when spindle is active.
+   * 1. In 'park' mode: All subassemblies rest at exact (0,0,0) CAD factory alignment.
+   * 2. In 'work' mode: 
+   *    - Gantry crossbeam moves vertically in Y (CNC Z) along the vertical columns.
+   *    - Spindle carriage moves horizontally in X (CNC X) along the gantry crossbeam.
+   *    - Work table moves in Z (CNC Y) along the bed rails underneath.
+   * 3. Exploded factor allows smooth, non-destructive disassembly for inspection.
+   * 4. Tool rotates strictly on its own centered collet shaft.
    */
   applyTransform() {
-    const { gantryX, tableY, spindleZ, tool } = this.groups;
+    const { gantryX, tableY, spindleZ, tool, enclosure } = this.groups;
     if (!gantryX || !spindleZ) return;
 
-    const off = MachineKinematics.OFFSETS;
-    const stockTopY = off.zPlunge + this.stockHeight;
+    const ef = this.explodedFactor;
 
-    // 1. Gantry bridge is solidly bolted across upright columns
-    gantryX.position.set(0, 0, 0);
+    if (this.assemblyMode === 'park') {
+      // 100% Exact Factory CAD Reference Assembly matching main.STEP
+      gantryX.position.set(0, ef * 80, 0);
+      spindleZ.position.set(ef * 120, 0, 0);
+      if (tableY) tableY.position.set(0, 0, -ef * 100);
+      if (enclosure) enclosure.position.set(0, ef * 180, 0);
+    } else {
+      // Active Digital Twin Machining Mode
+      const off = MachineKinematics.OFFSETS;
 
-    // 2. Spindle carriage slides along gantry in X, plunges in Y (CNC Z plunge)
-    spindleZ.position.x = off.x + this.currentPos.x;
-    spindleZ.position.y = stockTopY + this.currentPos.z;
-    spindleZ.position.z = 0;
+      // 1. Gantry bridge travels vertically along the upright columns to the workpiece level + Z height
+      gantryX.position.set(0, off.zPlunge + this.stockHeight + this.currentPos.z + ef * 80, 0);
 
-    // 3. Work table slides along base rails in Z (CNC Y depth)
-    if (tableY) {
-      tableY.position.z = off.tableZ - this.currentPos.y;
+      // 2. Spindle carriage slides horizontally along gantry rails in X
+      spindleZ.position.set(off.x + this.currentPos.x + ef * 120, 0, 0);
+
+      // 3. Work table slides along base bed rails in Three.js Z (CNC Y depth)
+      if (tableY) {
+        tableY.position.set(0, 0, off.tableZ - this.currentPos.y - ef * 100);
+      }
+
+      if (enclosure) {
+        enclosure.position.set(0, ef * 180, 0);
+      }
     }
 
-    // 4. Tool rotates with spindle
+    // 4. Tool rotates concentrically on its own collet shaft
     if (tool && this.spindleActive) {
       tool.rotation.y += 0.35;
     }
@@ -165,7 +213,10 @@ export class MachineKinematics {
       feedRate: this.feedRate,
       spindleActive: this.spindleActive,
       limitsExceeded: this.limitsExceeded,
-      lastError: this.lastError
+      lastError: this.lastError,
+      assemblyMode: this.assemblyMode,
+      explodedFactor: this.explodedFactor
     };
   }
 }
+

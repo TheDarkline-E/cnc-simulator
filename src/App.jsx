@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   Play, Pause, Square, RotateCcw, Box, Cpu, 
   Settings, Layers, FileCode, CheckCircle2, 
-  Download, Activity, Compass, Info, Sparkles,
+  Download, Activity, Compass, Info,
   Sun, Moon, UploadCloud
 } from 'lucide-react';
 
@@ -203,10 +203,24 @@ export default function App() {
 
   // Playback Handlers
   const handleStart = () => {
-    if (!toolpathData) {
-      generateToolpath();
+    if (simEngineRef.current) {
+      if (simState === 'paused') {
+        simEngineRef.current.resume();
+        return;
+      }
+      if (!toolpathData) {
+        const result = camEngine.generateProgram({
+          stock: stockConfig,
+          tool: toolConfig,
+          operations,
+          parameters: machiningParams,
+          cadStats
+        });
+        setToolpathData(result.toolpathData);
+        simEngineRef.current.loadToolpath(result.toolpathData);
+      }
+      simEngineRef.current.start();
     }
-    if (simEngineRef.current) simEngineRef.current.start();
   };
 
   const handlePause = () => {

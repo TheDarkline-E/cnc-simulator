@@ -1,94 +1,84 @@
 import * as THREE from 'three';
+import { injectBilletPBRShader } from './ShaderInjection.js';
 
 /**
- * MaterialRemoval.js
- * High-Precision Dynamic 3D Volumetric Stock Material Removal Engine.
- * 
- * Features:
- * - 3D Enclosed Solid Billet: dynamic excavated top heightfield + 4 skirt walls + bottom plate
- * - Dual-finish realistic metal PBR shading with per-vertex raw vs cut metallic highlights
- * - Real-world industrial material presets (Al6061, Brass, Mild Steel, Stainless, Titanium, Delrin)
- * - Analytical central-difference surface normals for crisp specular reflections & scallop sheen
- * - Swept volume toolpath interpolation (no discrete scallop gaps during high-feed cuts)
- * - Dynamic Material Removal Rate (MRR cm³/min), chip load, and excavated volume metrics
- * - Multiple display modes: Solid Billet, Ghost Target CAD Overlay, Depth Heatmap
+ * Photorealistic PBR Material Presets
  */
-
 export const MATERIAL_PRESETS = {
   al6061: {
     id: 'al6061',
     name: 'Aluminum 6061-T6',
-    rawColor: [0.77, 0.80, 0.84],      // Satin mill-finish silver billet
-    cutColor: [0.96, 0.98, 1.00],      // Mirror-shine freshly milled silver
-    roughnessRaw: 0.35,
-    roughnessCut: 0.10,
-    metalness: 0.94,
-    clearcoat: 0.60,
-    clearcoatRoughness: 0.12,
-    chipColor: 0xdce5ed,               // Bright silver curled chips
+    rawColor: [0.82, 0.85, 0.88],      // Matte silver-grey extruded mill finish
+    cutColor: [0.96, 0.97, 0.99],      // Mirror-specular polished cut floor
+    roughnessRaw: 0.42,
+    roughnessCut: 0.08,
+    metalness: 0.96,
+    clearcoat: 0.65,
+    clearcoatRoughness: 0.08,
+    chipColor: 0xe2e8f0,               // Silver curled chips
     density: 2.70,                     // g/cm³
     hardness: '95 HB',
-    optimalSFM: 600,
+    optimalSFM: 800,
     swarfType: 'spiral'
   },
   brass: {
     id: 'brass',
-    name: 'Brass C360 Free-Cutting',
-    rawColor: [0.82, 0.65, 0.22],      // Warm extruded golden bar
-    cutColor: [1.00, 0.90, 0.45],      // High-polished reflective cut gold
-    roughnessRaw: 0.28,
-    roughnessCut: 0.08,
+    name: 'Brass 360 (Free Machining)',
+    rawColor: [0.88, 0.72, 0.32],      // Warm extruded brass bar
+    cutColor: [0.99, 0.86, 0.42],      // Gleaming mirror polished yellow gold
+    roughnessRaw: 0.36,
+    roughnessCut: 0.06,
     metalness: 0.92,
-    clearcoat: 0.70,
-    clearcoatRoughness: 0.10,
-    chipColor: 0xfacc15,               // Shimmering gold flakes
+    clearcoat: 0.75,
+    clearcoatRoughness: 0.06,
+    chipColor: 0xfacc15,               // Brilliant golden flakes
     density: 8.50,
-    hardness: '130 HB',
-    optimalSFM: 800,
+    hardness: '150 HB',
+    optimalSFM: 600,
     swarfType: 'flake'
   },
   steel: {
     id: 'steel',
     name: 'Mild Steel 1018',
-    rawColor: [0.33, 0.37, 0.42],      // Dark hot-rolled industrial mill scale
-    cutColor: [0.82, 0.85, 0.89],      // Crisp bright ground steel
-    roughnessRaw: 0.46,
-    roughnessCut: 0.14,
-    metalness: 0.88,
-    clearcoat: 0.40,
-    clearcoatRoughness: 0.18,
-    chipColor: 0x94a3b8,               // Steel grey turnings
+    rawColor: [0.42, 0.45, 0.48],      // Dark hot-rolled mill scale oxide
+    cutColor: [0.88, 0.90, 0.92],      // Precision ground bright tool steel
+    roughnessRaw: 0.52,
+    roughnessCut: 0.12,
+    metalness: 0.94,
+    clearcoat: 0.45,
+    clearcoatRoughness: 0.12,
+    chipColor: 0x94a3b8,               // Dark grey steel needle chips
     density: 7.87,
     hardness: '126 HB',
-    optimalSFM: 250,
+    optimalSFM: 350,
     swarfType: 'needle'
   },
   stainless: {
     id: 'stainless',
     name: 'Stainless Steel 304',
-    rawColor: [0.61, 0.64, 0.69],      // Cold-rolled slate-steel
-    cutColor: [0.94, 0.96, 0.98],      // Mirror chrome-steel cut pocket
-    roughnessRaw: 0.35,
-    roughnessCut: 0.07,
-    metalness: 0.96,
-    clearcoat: 0.65,
-    clearcoatRoughness: 0.10,
-    chipColor: 0x60a5fa,               // Blue-tinted heat-annealed chips
+    rawColor: [0.65, 0.68, 0.72],      // Cold-rolled austenitic passivation
+    cutColor: [0.94, 0.95, 0.97],      // Polished surgical chrome finish
+    roughnessRaw: 0.38,
+    roughnessCut: 0.09,
+    metalness: 0.95,
+    clearcoat: 0.70,
+    clearcoatRoughness: 0.08,
+    chipColor: 0x60a5fa,               // Heat-tempered iridescent blue/straw chips
     density: 8.00,
-    hardness: '170 HB',
-    optimalSFM: 180,
+    hardness: '180 HB',
+    optimalSFM: 250,
     swarfType: 'ribbon'
   },
   titanium: {
     id: 'titanium',
-    name: 'Titanium Ti-6Al-4V',
-    rawColor: [0.40, 0.46, 0.54],      // Heavy gunmetal billet
-    cutColor: [0.86, 0.91, 0.98],      // Lustrous titanium with faint iridescent sheen
-    roughnessRaw: 0.40,
-    roughnessCut: 0.12,
-    metalness: 0.92,
+    name: 'Titanium Ti-6Al-4V (Grade 5)',
+    rawColor: [0.55, 0.54, 0.56],      // Deep satin aerospace titanium
+    cutColor: [0.85, 0.86, 0.88],      // High-luster milled silver face
+    roughnessRaw: 0.45,
+    roughnessCut: 0.14,
+    metalness: 0.90,
     clearcoat: 0.50,
-    clearcoatRoughness: 0.15,
+    clearcoatRoughness: 0.14,
     chipColor: 0xa855f7,               // Purple/straw heat-tinted titanium turnings
     density: 4.43,
     hardness: '330 HB',
@@ -101,10 +91,10 @@ export const MATERIAL_PRESETS = {
     rawColor: [0.93, 0.92, 0.89],      // Matte engineering polymer ivory-white
     cutColor: [1.00, 1.00, 1.00],      // Pure smooth glossy white milled floor
     roughnessRaw: 0.55,
-    roughnessCut: 0.22,
+    roughnessCut: 0.18,
     metalness: 0.02,
     clearcoat: 0.35,
-    clearcoatRoughness: 0.25,
+    clearcoatRoughness: 0.20,
     chipColor: 0xf8fafc,               // White polymer flakes
     density: 1.41,
     hardness: '85 M',
@@ -113,10 +103,17 @@ export const MATERIAL_PRESETS = {
   }
 };
 
+/**
+ * MaterialRemovalEngine
+ * High-resolution 320x240 heightfield with anisotropic tool mark normal perturbation,
+ * steep pocket wall detection, real-time Ra/Rz surface roughness calculation,
+ * and depth heatmap visualization.
+ */
 export class MaterialRemovalEngine {
   constructor(stock = { width: 100, length: 80, height: 30, material: 'al6061' }) {
-    this.resX = 160; // Grid resolution X (columns across width)
-    this.resY = 120; // Grid resolution Y (rows across length)
+    // 320x240 = 76,800 grid cells (high fidelity CNC tool marks)
+    this.resX = 320;
+    this.resY = 240;
     this.stock = { ...stock };
     this.initialVolume = (stock.width || 100) * (stock.length || 80) * (stock.height || 30);
     this.removedVolume = 0;
@@ -125,12 +122,26 @@ export class MaterialRemovalEngine {
     this.displayMode = 'solid'; // 'solid' | 'ghost' | 'heatmap'
 
     this.grid = new Float32Array(this.resX * this.resY);
+    this.cutDirX = new Float32Array(this.resX * this.resY);
+    this.cutDirY = new Float32Array(this.resX * this.resY);
+
+    // Dirty bounding box tracking for 60+ FPS incremental updates
+    this.dirtyMinX = this.resX;
+    this.dirtyMaxX = 0;
+    this.dirtyMinY = this.resY;
+    this.dirtyMaxY = 0;
+    this.hasDirty = false;
+
     this.mesh = null;
     this.geometry = null;
     this.material = null;
 
     // Track previous tool tip position for swept volume cuts
     this.lastToolPos = null;
+
+    // Measured surface roughness
+    this.measuredRa = 1.6; // µm
+    this.measuredRz = 6.3; // µm
 
     this.reset(stock);
   }
@@ -142,27 +153,40 @@ export class MaterialRemovalEngine {
     this.currentMRR = 0;
     this.lastToolPos = null;
     this.grid.fill(0.0);
+    this.cutDirX.fill(1.0);
+    this.cutDirY.fill(0.0);
+    this.dirtyMinX = 0;
+    this.dirtyMaxX = this.resX - 1;
+    this.dirtyMinY = 0;
+    this.dirtyMaxY = this.resY - 1;
+    this.hasDirty = true;
+    this.measuredRa = 1.6;
+    this.measuredRz = 6.3;
 
     if (this.mesh && this.geometry) {
       this.rebuildOrUpdateAll();
     }
   }
 
+  setGridResolution(resX, resY) {
+    if (this.resX === resX && this.resY === resY) return;
+    this.resX = resX;
+    this.resY = resY;
+    this.grid = new Float32Array(resX * resY);
+    this.cutDirX = new Float32Array(resX * resY);
+    this.cutDirY = new Float32Array(resX * resY);
+    if (this.mesh && this.mesh.parent) {
+      const parent = this.mesh.parent;
+      parent.remove(this.mesh);
+      this.createMesh(this.stock.material);
+      parent.add(this.mesh);
+    }
+  }
+
   /**
    * Excavates material when tool plunges into or sweeps across stock.
-   * Coordinates toolX, toolY, toolZ are relative to stock top center (X0 Y0 Z0).
-   * Supports swept-volume interpolation between previous and current tool positions.
-   * 
-   * @param {number} toolX
-   * @param {number} toolY
-   * @param {number} toolZ
-   * @param {number} toolDiameter
-   * @param {string} toolType - 'flat_end_mill' | 'ball_end_mill'
-   * @param {number} feedRate
-   * @returns {boolean} modified
    */
   cut(toolX, toolY, toolZ, toolDiameter = 6.0, toolType = 'flat_end_mill', feedRate = 800) {
-    // If above stock top surface, update last position and return
     if (toolZ >= 0.05) {
       this.lastToolPos = { x: toolX, y: toolY, z: toolZ };
       this.currentMRR = 0;
@@ -178,22 +202,31 @@ export class MaterialRemovalEngine {
       const dz = toolZ - this.lastToolPos.z;
       const dist = Math.hypot(dx, dy, dz);
 
-      const stepSize = Math.max(0.8, (toolDiameter || 6.0) * 0.35);
+      // Unit feed vector
+      const feedLen = Math.hypot(dx, dy) || 1;
+      const feedDirX = dx / feedLen;
+      const feedDirY = dy / feedLen;
+
+      const stepSize = Math.max(0.6, (toolDiameter || 6.0) * 0.28);
       if (dist > stepSize) {
-        const numSteps = Math.min(20, Math.ceil(dist / stepSize));
+        const numSteps = Math.min(24, Math.ceil(dist / stepSize));
         for (let s = 1; s < numSteps; s++) {
           const t = s / numSteps;
           const sx = this.lastToolPos.x + dx * t;
           const sy = this.lastToolPos.y + dy * t;
           const sz = this.lastToolPos.z + dz * t;
-          if (this._cutSinglePoint(sx, sy, sz, toolDiameter, toolType)) {
+          if (this._cutSinglePoint(sx, sy, sz, toolDiameter, toolType, feedDirX, feedDirY)) {
             modified = true;
           }
         }
       }
     }
 
-    if (this._cutSinglePoint(toolX, toolY, toolZ, toolDiameter, toolType)) {
+    const curFeedLen = this.lastToolPos ? Math.hypot(toolX - this.lastToolPos.x, toolY - this.lastToolPos.y) || 1 : 1;
+    const curDirX = this.lastToolPos ? (toolX - this.lastToolPos.x) / curFeedLen : 1;
+    const curDirY = this.lastToolPos ? (toolY - this.lastToolPos.y) / curFeedLen : 0;
+
+    if (this._cutSinglePoint(toolX, toolY, toolZ, toolDiameter, toolType, curDirX, curDirY)) {
       modified = true;
     }
 
@@ -202,14 +235,18 @@ export class MaterialRemovalEngine {
     if (modified && this.mesh) {
       this.updateGeometry();
       
-      // Calculate instantaneous Material Removal Rate (MRR)
       const now = performance.now();
       const dt = (now - this.lastCutTime) / 1000.0;
       if (dt > 0.001) {
-        // Feed in mm/min, depth in mm, width in mm -> MRR = (depth * width * feed) / 1000 cm³/min
         const cutDepth = Math.abs(toolZ);
         const effectiveWidth = Math.min(this.stock.width, toolDiameter);
         this.currentMRR = Number(((cutDepth * effectiveWidth * (feedRate || 800)) / 1000).toFixed(1));
+        
+        // Approximate empirical Ra based on feed & cutter geometry
+        const chipload = (feedRate || 800) / (8000 * 2); // mm per tooth
+        const theoreticalRa = ((chipload * chipload) / (32 * (toolDiameter / 2))) * 1000;
+        this.measuredRa = Number(Math.max(0.4, Math.min(6.3, theoreticalRa * 2.5 + 0.6)).toFixed(2));
+        this.measuredRz = Number((this.measuredRa * 4.2).toFixed(2));
       }
       this.lastCutTime = now;
     }
@@ -217,7 +254,7 @@ export class MaterialRemovalEngine {
     return modified;
   }
 
-  _cutSinglePoint(toolX, toolY, toolZ, toolDiameter, toolType) {
+  _cutSinglePoint(toolX, toolY, toolZ, toolDiameter, toolType, feedDirX = 1, feedDirY = 0) {
     if (toolZ >= 0.0) return false;
 
     const halfW = this.stock.width / 2.0;
@@ -248,7 +285,6 @@ export class MaterialRemovalEngine {
         if (distSq <= radiusSq) {
           let effectiveCutZ = toolZ;
 
-          // Ball mill profile: spherical cap subtraction
           if (isBallMill) {
             const rOffset = Math.sqrt(Math.max(0, radiusSq - distSq));
             effectiveCutZ = toolZ + (radius - rOffset);
@@ -261,6 +297,8 @@ export class MaterialRemovalEngine {
               const diff = currentDepth - effectiveCutZ;
               this.removedVolume += diff * cellArea;
               this.grid[idx] = effectiveCutZ;
+              this.cutDirX[idx] = feedDirX;
+              this.cutDirY[idx] = feedDirY;
               modified = true;
             }
           }
@@ -268,12 +306,37 @@ export class MaterialRemovalEngine {
       }
     }
 
+    if (modified) {
+      this.dirtyMinX = Math.min(this.dirtyMinX, Math.max(0, minGridX - 1));
+      this.dirtyMaxX = Math.max(this.dirtyMaxX, Math.min(this.resX - 1, maxGridX + 1));
+      this.dirtyMinY = Math.min(this.dirtyMinY, Math.max(0, minGridY - 1));
+      this.dirtyMaxY = Math.max(this.dirtyMaxY, Math.min(this.resY - 1, maxGridY + 1));
+      this.hasDirty = true;
+    }
+
     return modified;
   }
 
   /**
+   * Surface Roughness statistics
+   */
+  getSurfaceRoughness() {
+    let isoGrade = 'N7';
+    if (this.measuredRa <= 0.4) isoGrade = 'N5 (Polished)';
+    else if (this.measuredRa <= 0.8) isoGrade = 'N6 (Fine Finish)';
+    else if (this.measuredRa <= 1.6) isoGrade = 'N7 (Standard Milled)';
+    else if (this.measuredRa <= 3.2) isoGrade = 'N8 (Medium Roughing)';
+    else isoGrade = 'N9 (Heavy Roughing)';
+
+    return {
+      Ra: this.measuredRa,
+      Rz: this.measuredRz,
+      isoGrade
+    };
+  }
+
+  /**
    * Builds the complete 3D Enclosed Volumetric Workpiece Mesh.
-   * Top excavated heightfield + 4 dynamic skirt walls + solid base plate.
    */
   createMesh(presetId = 'al6061') {
     const matPreset = MATERIAL_PRESETS[this.stock.material || presetId] || MATERIAL_PRESETS.al6061;
@@ -286,60 +349,55 @@ export class MaterialRemovalEngine {
     const nWest = resY * 2;
     const nEast = resY * 2;
     const nBottom = 4;
-
     const totalVertices = nTop + nSouth + nNorth + nWest + nEast + nBottom;
-
-    // Triangle index counts:
-    // Top: (resX - 1) * (resY - 1) * 2 * 3
-    // South: (resX - 1) * 2 * 3
-    // North: (resX - 1) * 2 * 3
-    // West:  (resY - 1) * 2 * 3
-    // East:  (resY - 1) * 2 * 3
-    // Bottom: 2 * 3
-    const numIndices = (
-      (resX - 1) * (resY - 1) * 6 +
-      (resX - 1) * 6 +
-      (resX - 1) * 6 +
-      (resY - 1) * 6 +
-      (resY - 1) * 6 +
-      6
-    );
 
     const positions = new Float32Array(totalVertices * 3);
     const normals = new Float32Array(totalVertices * 3);
     const colors = new Float32Array(totalVertices * 3);
-    const indices = new Uint32Array(numIndices);
+    const roughnessAttrs = new Float32Array(totalVertices);
+    const metalnessAttrs = new Float32Array(totalVertices);
+    const aoAttrs = new Float32Array(totalVertices);
+    const cutDirs = new Float32Array(totalVertices * 2);
+
+    const totalQuads = (resX - 1) * (resY - 1) + (resX - 1) * 2 + (resY - 1) * 2 + 1;
+    const totalIndices = totalQuads * 6;
+    const indices = new (totalVertices > 65535 ? Uint32Array : Uint16Array)(totalIndices);
 
     const halfW = this.stock.width / 2.0;
     const halfL = this.stock.length / 2.0;
-    const stockH = this.stock.height || 30.0;
+    const stockH = this.stock.height;
+
     const rawR = matPreset.rawColor[0];
     const rawG = matPreset.rawColor[1];
     const rawB = matPreset.rawColor[2];
 
-    // ================= 1. TOP HEIGHTFIELD VERTICES =================
+    // 1. TOP HEIGHTFIELD
     for (let iy = 0; iy < resY; iy++) {
       const z = (iy / (resY - 1)) * this.stock.length - halfL;
       for (let ix = 0; ix < resX; ix++) {
         const x = (ix / (resX - 1)) * this.stock.width - halfW;
         const v = iy * resX + ix;
-        const v3 = v * 3;
 
-        positions[v3] = x;
-        positions[v3 + 1] = 0.0; // Y = height
-        positions[v3 + 2] = z;
+        positions[v * 3] = x;
+        positions[v * 3 + 1] = 0.0;
+        positions[v * 3 + 2] = z;
 
-        normals[v3] = 0.0;
-        normals[v3 + 1] = 1.0;
-        normals[v3 + 2] = 0.0;
+        normals[v * 3] = 0.0;
+        normals[v * 3 + 1] = 1.0;
+        normals[v * 3 + 2] = 0.0;
 
-        colors[v3] = rawR;
-        colors[v3 + 1] = rawG;
-        colors[v3 + 2] = rawB;
+        colors[v * 3] = rawR;
+        colors[v * 3 + 1] = rawG;
+        colors[v * 3 + 2] = rawB;
+
+        roughnessAttrs[v] = matPreset.roughnessRaw;
+        metalnessAttrs[v] = matPreset.metalness;
+        aoAttrs[v] = 1.0;
+        cutDirs[v * 2] = 1.0;
+        cutDirs[v * 2 + 1] = 0.0;
       }
     }
 
-    // Top Triangles (wound counter-clockwise looking from +Y down)
     let idx = 0;
     for (let iy = 0; iy < resY - 1; iy++) {
       for (let ix = 0; ix < resX - 1; ix++) {
@@ -358,26 +416,30 @@ export class MaterialRemovalEngine {
       }
     }
 
-    // ================= 2. SOUTH SKIRT WALL (Z = -halfL, Normal = 0, 0, -1) =================
+    // 2. SOUTH SKIRT WALL (Z = -halfL)
     const southOffset = nTop;
     for (let ix = 0; ix < resX; ix++) {
       const x = (ix / (resX - 1)) * this.stock.width - halfW;
       const topIdx = southOffset + ix * 2;
       const botIdx = topIdx + 1;
 
-      // Top vertex
       positions[topIdx * 3] = x;
       positions[topIdx * 3 + 1] = 0.0;
       positions[topIdx * 3 + 2] = -halfL;
       normals[topIdx * 3] = 0; normals[topIdx * 3 + 1] = 0; normals[topIdx * 3 + 2] = -1;
       colors[topIdx * 3] = rawR; colors[topIdx * 3 + 1] = rawG; colors[topIdx * 3 + 2] = rawB;
+      roughnessAttrs[topIdx] = matPreset.roughnessRaw;
+      metalnessAttrs[topIdx] = matPreset.metalness;
+      aoAttrs[topIdx] = 1.0;
 
-      // Bottom vertex
       positions[botIdx * 3] = x;
       positions[botIdx * 3 + 1] = -stockH;
       positions[botIdx * 3 + 2] = -halfL;
       normals[botIdx * 3] = 0; normals[botIdx * 3 + 1] = 0; normals[botIdx * 3 + 2] = -1;
       colors[botIdx * 3] = rawR * 0.85; colors[botIdx * 3 + 1] = rawG * 0.85; colors[botIdx * 3 + 2] = rawB * 0.85;
+      roughnessAttrs[botIdx] = matPreset.roughnessRaw;
+      metalnessAttrs[botIdx] = matPreset.metalness;
+      aoAttrs[botIdx] = 0.65;
     }
 
     for (let ix = 0; ix < resX - 1; ix++) {
@@ -395,7 +457,7 @@ export class MaterialRemovalEngine {
       indices[idx++] = b0;
     }
 
-    // ================= 3. NORTH SKIRT WALL (Z = +halfL, Normal = 0, 0, 1) =================
+    // 3. NORTH SKIRT WALL (Z = +halfL)
     const northOffset = southOffset + nSouth;
     for (let ix = 0; ix < resX; ix++) {
       const x = (ix / (resX - 1)) * this.stock.width - halfW;
@@ -407,12 +469,18 @@ export class MaterialRemovalEngine {
       positions[topIdx * 3 + 2] = halfL;
       normals[topIdx * 3] = 0; normals[topIdx * 3 + 1] = 0; normals[topIdx * 3 + 2] = 1;
       colors[topIdx * 3] = rawR; colors[topIdx * 3 + 1] = rawG; colors[topIdx * 3 + 2] = rawB;
+      roughnessAttrs[topIdx] = matPreset.roughnessRaw;
+      metalnessAttrs[topIdx] = matPreset.metalness;
+      aoAttrs[topIdx] = 1.0;
 
       positions[botIdx * 3] = x;
       positions[botIdx * 3 + 1] = -stockH;
       positions[botIdx * 3 + 2] = halfL;
       normals[botIdx * 3] = 0; normals[botIdx * 3 + 1] = 0; normals[botIdx * 3 + 2] = 1;
       colors[botIdx * 3] = rawR * 0.85; colors[botIdx * 3 + 1] = rawG * 0.85; colors[botIdx * 3 + 2] = rawB * 0.85;
+      roughnessAttrs[botIdx] = matPreset.roughnessRaw;
+      metalnessAttrs[botIdx] = matPreset.metalness;
+      aoAttrs[botIdx] = 0.65;
     }
 
     for (let ix = 0; ix < resX - 1; ix++) {
@@ -430,7 +498,7 @@ export class MaterialRemovalEngine {
       indices[idx++] = b1;
     }
 
-    // ================= 4. WEST SKIRT WALL (X = -halfW, Normal = -1, 0, 0) =================
+    // 4. WEST SKIRT WALL (X = -halfW)
     const westOffset = northOffset + nNorth;
     for (let iy = 0; iy < resY; iy++) {
       const z = (iy / (resY - 1)) * this.stock.length - halfL;
@@ -442,12 +510,18 @@ export class MaterialRemovalEngine {
       positions[topIdx * 3 + 2] = z;
       normals[topIdx * 3] = -1; normals[topIdx * 3 + 1] = 0; normals[topIdx * 3 + 2] = 0;
       colors[topIdx * 3] = rawR; colors[topIdx * 3 + 1] = rawG; colors[topIdx * 3 + 2] = rawB;
+      roughnessAttrs[topIdx] = matPreset.roughnessRaw;
+      metalnessAttrs[topIdx] = matPreset.metalness;
+      aoAttrs[topIdx] = 1.0;
 
       positions[botIdx * 3] = -halfW;
       positions[botIdx * 3 + 1] = -stockH;
       positions[botIdx * 3 + 2] = z;
       normals[botIdx * 3] = -1; normals[botIdx * 3 + 1] = 0; normals[botIdx * 3 + 2] = 0;
       colors[botIdx * 3] = rawR * 0.85; colors[botIdx * 3 + 1] = rawG * 0.85; colors[botIdx * 3 + 2] = rawB * 0.85;
+      roughnessAttrs[botIdx] = matPreset.roughnessRaw;
+      metalnessAttrs[botIdx] = matPreset.metalness;
+      aoAttrs[botIdx] = 0.65;
     }
 
     for (let iy = 0; iy < resY - 1; iy++) {
@@ -465,7 +539,7 @@ export class MaterialRemovalEngine {
       indices[idx++] = b1;
     }
 
-    // ================= 5. EAST SKIRT WALL (X = +halfW, Normal = 1, 0, 0) =================
+    // 5. EAST SKIRT WALL (X = +halfW)
     const eastOffset = westOffset + nWest;
     for (let iy = 0; iy < resY; iy++) {
       const z = (iy / (resY - 1)) * this.stock.length - halfL;
@@ -477,12 +551,18 @@ export class MaterialRemovalEngine {
       positions[topIdx * 3 + 2] = z;
       normals[topIdx * 3] = 1; normals[topIdx * 3 + 1] = 0; normals[topIdx * 3 + 2] = 0;
       colors[topIdx * 3] = rawR; colors[topIdx * 3 + 1] = rawG; colors[topIdx * 3 + 2] = rawB;
+      roughnessAttrs[topIdx] = matPreset.roughnessRaw;
+      metalnessAttrs[topIdx] = matPreset.metalness;
+      aoAttrs[topIdx] = 1.0;
 
       positions[botIdx * 3] = halfW;
       positions[botIdx * 3 + 1] = -stockH;
       positions[botIdx * 3 + 2] = z;
       normals[botIdx * 3] = 1; normals[botIdx * 3 + 1] = 0; normals[botIdx * 3 + 2] = 0;
       colors[botIdx * 3] = rawR * 0.85; colors[botIdx * 3 + 1] = rawG * 0.85; colors[botIdx * 3 + 2] = rawB * 0.85;
+      roughnessAttrs[botIdx] = matPreset.roughnessRaw;
+      metalnessAttrs[botIdx] = matPreset.metalness;
+      aoAttrs[botIdx] = 0.65;
     }
 
     for (let iy = 0; iy < resY - 1; iy++) {
@@ -500,22 +580,23 @@ export class MaterialRemovalEngine {
       indices[idx++] = b0;
     }
 
-    // ================= 6. BOTTOM BASE PLATE (Y = -stockH, Normal = 0, -1, 0) =================
+    // 6. BOTTOM BASE PLATE (Y = -stockH)
     const bottomOffset = eastOffset + nEast;
-    const bCorners = [
-      [-halfW, -halfL],
-      [+halfW, -halfL],
-      [+halfW, +halfL],
-      [-halfW, +halfL],
-    ];
+    positions[bottomOffset * 3 + 0] = -halfW; positions[bottomOffset * 3 + 1] = -stockH; positions[bottomOffset * 3 + 2] = -halfL;
+    positions[(bottomOffset + 1) * 3 + 0] = halfW; positions[(bottomOffset + 1) * 3 + 1] = -stockH; positions[(bottomOffset + 1) * 3 + 2] = -halfL;
+    positions[(bottomOffset + 2) * 3 + 0] = halfW; positions[(bottomOffset + 2) * 3 + 1] = -stockH; positions[(bottomOffset + 2) * 3 + 2] = halfL;
+    positions[(bottomOffset + 3) * 3 + 0] = -halfW; positions[(bottomOffset + 3) * 3 + 1] = -stockH; positions[(bottomOffset + 3) * 3 + 2] = halfL;
 
-    for (let c = 0; c < 4; c++) {
-      const v = bottomOffset + c;
-      positions[v * 3] = bCorners[c][0];
-      positions[v * 3 + 1] = -stockH;
-      positions[v * 3 + 2] = bCorners[c][1];
-      normals[v * 3] = 0; normals[v * 3 + 1] = -1; normals[v * 3 + 2] = 0;
-      colors[v * 3] = rawR * 0.75; colors[v * 3 + 1] = rawG * 0.75; colors[v * 3 + 2] = rawB * 0.75;
+    for (let i = 0; i < 4; i++) {
+      normals[(bottomOffset + i) * 3 + 0] = 0;
+      normals[(bottomOffset + i) * 3 + 1] = -1;
+      normals[(bottomOffset + i) * 3 + 2] = 0;
+      colors[(bottomOffset + i) * 3 + 0] = rawR * 0.75;
+      colors[(bottomOffset + i) * 3 + 1] = rawG * 0.75;
+      colors[(bottomOffset + i) * 3 + 2] = rawB * 0.75;
+      roughnessAttrs[bottomOffset + i] = matPreset.roughnessRaw;
+      metalnessAttrs[bottomOffset + i] = matPreset.metalness;
+      aoAttrs[bottomOffset + i] = 0.45;
     }
 
     indices[idx++] = bottomOffset + 0;
@@ -526,14 +607,16 @@ export class MaterialRemovalEngine {
     indices[idx++] = bottomOffset + 3;
     indices[idx++] = bottomOffset + 2;
 
-    // Create Geometry
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     geo.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
     geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    geo.setAttribute('aRoughness', new THREE.BufferAttribute(roughnessAttrs, 1));
+    geo.setAttribute('aMetalness', new THREE.BufferAttribute(metalnessAttrs, 1));
+    geo.setAttribute('aAO', new THREE.BufferAttribute(aoAttrs, 1));
+    geo.setAttribute('aCutDir', new THREE.BufferAttribute(cutDirs, 2));
     geo.setIndex(new THREE.BufferAttribute(indices, 1));
 
-    // Create High-End Metallic PBR Material
     const mat = new THREE.MeshPhysicalMaterial({
       vertexColors: true,
       metalness: matPreset.metalness,
@@ -548,6 +631,9 @@ export class MaterialRemovalEngine {
       depthWrite: this.displayMode !== 'ghost'
     });
 
+    // Inject custom per-vertex PBR roughness, metalness, AO, and anisotropic tool marks
+    injectBilletPBRShader(mat);
+
     this.geometry = geo;
     this.material = mat;
     this.mesh = new THREE.Mesh(geo, mat);
@@ -559,15 +645,19 @@ export class MaterialRemovalEngine {
   }
 
   /**
-   * Fast real-time update of excavated geometry, central-difference normals,
-   * and cut-versus-raw metallic vertex coloring.
+   * Fast real-time update of excavated geometry with dirty-region bounding box optimization,
+   * steep pocket wall detection, and anisotropic tool marks.
    */
-  updateGeometry() {
+  updateGeometry(fullRebuild = false) {
     if (!this.geometry || !this.mesh) return;
 
     const pos = this.geometry.attributes.position;
     const norm = this.geometry.attributes.normal;
     const col = this.geometry.attributes.color;
+    const rough = this.geometry.attributes.aRoughness;
+    const metal = this.geometry.attributes.aMetalness;
+    const ao = this.geometry.attributes.aAO;
+    const cutDir = this.geometry.attributes.aCutDir;
 
     const resX = this.resX;
     const resY = this.resY;
@@ -575,7 +665,6 @@ export class MaterialRemovalEngine {
     const nSouth = resX * 2;
     const nNorth = resX * 2;
     const nWest = resY * 2;
-    const nEast = resY * 2;
 
     const matPreset = MATERIAL_PRESETS[this.stock.material] || MATERIAL_PRESETS.al6061;
     const rawR = matPreset.rawColor[0];
@@ -589,14 +678,17 @@ export class MaterialRemovalEngine {
     const dx = this.stock.width / (resX - 1);
     const dz = this.stock.length / (resY - 1);
 
-    // 1. Update Top Excavated Heightfield
-    for (let iy = 0; iy < resY; iy++) {
-      for (let ix = 0; ix < resX; ix++) {
+    const startY = fullRebuild ? 0 : Math.max(0, this.dirtyMinY);
+    const endY = fullRebuild ? resY - 1 : Math.min(resY - 1, this.dirtyMaxY);
+    const startX = fullRebuild ? 0 : Math.max(0, this.dirtyMinX);
+    const endX = fullRebuild ? resX - 1 : Math.min(resX - 1, this.dirtyMaxX);
+
+    // 1. Update Heightfield Vertices in Dirty Envelope
+    for (let iy = startY; iy <= endY; iy++) {
+      for (let ix = startX; ix <= endX; ix++) {
         const v = iy * resX + ix;
         const depth = this.grid[v];
-        const v3 = v * 3;
 
-        // Position Y
         pos.setY(v, depth);
 
         // Dynamic Analytical Heightfield Normal via Central Differences
@@ -605,84 +697,137 @@ export class MaterialRemovalEngine {
         const hD = iy > 0 ? this.grid[v - resX] : depth;
         const hU = iy < resY - 1 ? this.grid[v + resX] : depth;
 
-        // Tangent slopes
-        const dHdX = (hR - hL) / (2.0 * dx);
-        const dHdZ = (hU - hD) / (2.0 * dz);
+        let dHdX = (hR - hL) / (2.0 * dx);
+        let dHdZ = (hU - hD) / (2.0 * dz);
 
-        // Normal = normalize(-dH/dx, 1, -dH/dz)
+        // Wall detection: sharpen vertical walls
+        const slope = Math.hypot(dHdX, dHdZ);
+        const isWall = slope > 0.8;
+
+        if (depth < -0.05) {
+          // Machined cut area: anisotropic tool scallop waves
+          const cDx = this.cutDirX[v] || 1;
+          const cDy = this.cutDirY[v] || 0;
+          const scallop = Math.sin((ix * cDy - iy * cDx) * 3.5) * 0.025;
+          dHdX += scallop * cDy;
+          dHdZ -= scallop * cDx;
+        }
+
         const len = Math.sqrt(dHdX * dHdX + 1.0 + dHdZ * dHdZ);
         norm.setXYZ(v, -dHdX / len, 1.0 / len, -dHdZ / len);
 
-        // Vertex Color: Raw Billet vs Polished Cut Metal
-        if (depth < -0.05) {
-          // Machined cut area: subtle high-speed cutter swirl / scallop pattern
-          const swirl = Math.sin(ix * 0.75 + iy * 0.75) * 0.02;
-          col.setXYZ(
-            v,
-            Math.min(1.0, cutR + swirl),
-            Math.min(1.0, cutG + swirl),
-            Math.min(1.0, cutB + swirl)
-          );
+        if (cutDir) {
+          cutDir.setXY(v, this.cutDirX[v], this.cutDirY[v]);
+        }
+
+        // Shading / Color Calculation
+        if (this.displayMode === 'heatmap') {
+          // Depth Heatmap: 0mm (green) -> 5mm (yellow) -> 12mm+ (red)
+          const maxH = Math.max(1, this.stock.height * 0.7);
+          const t = Math.min(1.0, Math.abs(depth) / maxH);
+
+          let r, g, b;
+          if (t < 0.35) {
+            const f = t / 0.35;
+            r = 0.06 + f * 0.90; g = 0.75 + f * 0.20; b = 0.45 * (1 - f);
+          } else if (t < 0.7) {
+            const f = (t - 0.35) / 0.35;
+            r = 0.96; g = 0.95 - f * 0.55; b = 0.08;
+          } else {
+            const f = (t - 0.7) / 0.3;
+            r = 0.96 - f * 0.15; g = 0.40 * (1 - f); b = 0.12;
+          }
+
+          // Subtle 1mm depth contour isolines
+          const isoline = Math.abs(Math.sin(depth * Math.PI * 1.0));
+          const lineDim = isoline < 0.15 ? 0.35 : 1.0;
+
+          col.setXYZ(v, r * lineDim, g * lineDim, b * lineDim);
+          if (rough) rough.setX(v, 0.25);
+          if (metal) metal.setX(v, 0.4);
+          if (ao) ao.setX(v, 1.0);
         } else {
-          // Untouched raw billet
-          col.setXYZ(v, rawR, rawG, rawB);
+          // Photorealistic Solid Mode
+          if (depth < -0.05) {
+            const cDx = this.cutDirX[v] || 1;
+            const cDy = this.cutDirY[v] || 0;
+            const swirl = Math.sin((ix * cDy - iy * cDx) * 2.8) * 0.015;
+
+            // Pocket floor vs pocket vertical wall shading
+            const wallDarken = isWall ? 0.88 : 1.0;
+
+            col.setXYZ(
+              v,
+              Math.min(1.0, (cutR + swirl) * wallDarken),
+              Math.min(1.0, (cutG + swirl) * wallDarken),
+              Math.min(1.0, (cutB + swirl) * wallDarken)
+            );
+
+            if (rough) rough.setX(v, isWall ? matPreset.roughnessCut * 1.5 : matPreset.roughnessCut);
+            if (metal) metal.setX(v, matPreset.metalness);
+            if (ao) ao.setX(v, isWall ? 0.75 : 1.0);
+          } else {
+            col.setXYZ(v, rawR, rawG, rawB);
+            if (rough) rough.setX(v, matPreset.roughnessRaw);
+            if (metal) metal.setX(v, matPreset.metalness);
+            if (ao) ao.setX(v, 1.0);
+          }
         }
       }
     }
 
     // 2. Synchronize Side Skirt Wall Tops to Perimeter Cut Depths
-    // South Wall (iy = 0)
     const southOffset = nTop;
     for (let ix = 0; ix < resX; ix++) {
       const depth = this.grid[ix];
       const topIdx = southOffset + ix * 2;
       pos.setY(topIdx, depth);
-      if (depth < -0.05) {
-        col.setXYZ(topIdx, cutR, cutG, cutB);
-      }
+      if (depth < -0.05) col.setXYZ(topIdx, cutR, cutG, cutB);
     }
 
-    // North Wall (iy = resY - 1)
     const northOffset = southOffset + nSouth;
     const northRowStart = (resY - 1) * resX;
     for (let ix = 0; ix < resX; ix++) {
       const depth = this.grid[northRowStart + ix];
       const topIdx = northOffset + ix * 2;
       pos.setY(topIdx, depth);
-      if (depth < -0.05) {
-        col.setXYZ(topIdx, cutR, cutG, cutB);
-      }
+      if (depth < -0.05) col.setXYZ(topIdx, cutR, cutG, cutB);
     }
 
-    // West Wall (ix = 0)
     const westOffset = northOffset + nNorth;
     for (let iy = 0; iy < resY; iy++) {
       const depth = this.grid[iy * resX];
       const topIdx = westOffset + iy * 2;
       pos.setY(topIdx, depth);
-      if (depth < -0.05) {
-        col.setXYZ(topIdx, cutR, cutG, cutB);
-      }
+      if (depth < -0.05) col.setXYZ(topIdx, cutR, cutG, cutB);
     }
 
-    // East Wall (ix = resX - 1)
     const eastOffset = westOffset + nWest;
     for (let iy = 0; iy < resY; iy++) {
       const depth = this.grid[iy * resX + (resX - 1)];
       const topIdx = eastOffset + iy * 2;
       pos.setY(topIdx, depth);
-      if (depth < -0.05) {
-        col.setXYZ(topIdx, cutR, cutG, cutB);
-      }
+      if (depth < -0.05) col.setXYZ(topIdx, cutR, cutG, cutB);
     }
 
     pos.needsUpdate = true;
     norm.needsUpdate = true;
     col.needsUpdate = true;
+    if (rough) rough.needsUpdate = true;
+    if (metal) metal.needsUpdate = true;
+    if (ao) ao.needsUpdate = true;
+    if (cutDir) cutDir.needsUpdate = true;
+
+    // Reset dirty bounding box
+    this.dirtyMinX = this.resX;
+    this.dirtyMaxX = 0;
+    this.dirtyMinY = this.resY;
+    this.dirtyMaxY = 0;
+    this.hasDirty = false;
   }
 
   rebuildOrUpdateAll() {
-    this.updateGeometry();
+    this.updateGeometry(true);
   }
 
   setMaterial(presetId) {
@@ -697,7 +842,7 @@ export class MaterialRemovalEngine {
       this.material.clearcoatRoughness = preset.clearcoatRoughness;
       this.material.needsUpdate = true;
     }
-    this.updateGeometry();
+    this.updateGeometry(true);
   }
 
   setDisplayMode(mode) {
@@ -714,6 +859,7 @@ export class MaterialRemovalEngine {
       this.material.depthWrite = true;
     }
     this.material.needsUpdate = true;
+    this.updateGeometry(true);
   }
 
   getProgress() {
@@ -729,7 +875,8 @@ export class MaterialRemovalEngine {
       chipVolumeCm3: Number(removedCm3.toFixed(2)),
       chipMassGrams: Number(removedGrams.toFixed(1)),
       mrrCm3PerMin: this.currentMRR,
-      material: matPreset.name
+      material: matPreset.name,
+      surfaceRoughness: this.getSurfaceRoughness()
     };
   }
 }

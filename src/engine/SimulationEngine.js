@@ -47,6 +47,9 @@ export class SimulationEngine {
 
   start() {
     if (!this.points.length) return;
+    if (this.currentIndex >= this.points.length - 1 || this.state === 'complete') {
+      this.reset();
+    }
     this.state = 'running';
     const rpm = this.toolpath?.stats?.spindleRPM || 8000;
     this.kinematics.setSpindle(true, rpm);
@@ -225,10 +228,12 @@ export class SimulationEngine {
       chipVolumeCm3: matStats.chipVolumeCm3 || 0,
       chipMassGrams: matStats.chipMassGrams || 0,
       coolantActive: this.coolantActive,
+      surfaceRoughness: matStats.surfaceRoughness || { Ra: 1.6, Rz: 6.3, isoGrade: 'N7 (Standard Milled)' },
       dro: {
         ...this.kinematics.getDRO(),
         coolantActive: this.coolantActive,
-        mrr: matStats.mrrCm3PerMin || 0
+        mrr: matStats.mrrCm3PerMin || 0,
+        surfaceRoughness: matStats.surfaceRoughness || { Ra: 1.6, Rz: 6.3, isoGrade: 'N7 (Standard Milled)' }
       },
       currentOperation: this.points[this.currentIndex]?.opName || 'Idle'
     });
