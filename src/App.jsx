@@ -1,15 +1,14 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   Play, Pause, Square, RotateCcw, Box, Cpu, 
-  Settings, Layers, FileCode, CheckCircle2, 
+  Settings, Layers, CheckCircle2, 
   Download, Activity, Compass, Info,
-  Sun, Moon, UploadCloud
+  Sun, Moon, UploadCloud, Disc, Sparkles
 } from 'lucide-react';
 
 import Viewport3D from './components/Viewport3D';
 import SetupPanel from './components/SetupPanel';
-import StatusPanel from './components/StatusPanel';
-import GCodeViewer from './components/GCodeViewer';
+import ManufacturingPanel from './components/ManufacturingPanel';
 import SimControls from './components/SimControls';
 import InspectionModal from './components/InspectionModal';
 
@@ -17,7 +16,6 @@ import { MachineKinematics } from './engine/MachineKinematics';
 import { MaterialRemovalEngine } from './engine/MaterialRemoval';
 import { SimulationEngine } from './engine/SimulationEngine';
 import { CAMEngine } from './engine/CAMEngine';
-import { GCodeParser } from './engine/GCodeParser';
 import { CADImporter } from './engine/CADImporter';
 
 export default function App() {
@@ -36,7 +34,6 @@ export default function App() {
   const kinematics = useMemo(() => new MachineKinematics(), []);
   const materialEngine = useMemo(() => new MaterialRemovalEngine({ width: 100, length: 80, height: 30, material: 'al6061' }), []);
   const camEngine = useMemo(() => new CAMEngine(), []);
-  const gcodeParser = useMemo(() => new GCodeParser(), []);
   const cadImporter = useMemo(() => new CADImporter(), []);
 
   // Configuration States
@@ -89,8 +86,6 @@ export default function App() {
   // Simulation State
   const [simState, setSimState] = useState('ready'); // 'ready' | 'running' | 'paused' | 'complete'
   const [progressPercent, setProgressPercent] = useState(0);
-  const [activeGCodeIndex, setActiveGCodeIndex] = useState(0);
-  const [activeGCode, setActiveGCode] = useState(null);
   const [elapsedTimeSec, setElapsedTimeSec] = useState(0);
   const [removedPercent, setRemovedPercent] = useState(0);
   const [currentOperation, setCurrentOperation] = useState('Idle');
@@ -128,8 +123,6 @@ export default function App() {
       onUpdate: (data) => {
         setSimState(data.state);
         setProgressPercent(data.progressPercent);
-        setActiveGCodeIndex(data.currentGCodeIndex);
-        setActiveGCode(data.activeGCode);
         setElapsedTimeSec(data.elapsedTimeSec);
         setRemovedPercent(data.removedPercent);
         setCurrentOperation(data.currentOperation);
@@ -144,7 +137,7 @@ export default function App() {
     sim.setToolConfig(toolConfig);
     simEngineRef.current = sim;
 
-    // Automatically generate initial toolpath for instant demo readiness
+    // Automatically generate initial toolpath for instant readiness
     generateToolpath();
   }, []);
 
@@ -185,20 +178,6 @@ export default function App() {
         height: cadStats.recommendedStock.height
       });
     }
-  };
-
-  // Load and Parse Custom Uploaded G-Code
-  const handleLoadCustomGCode = (gcodeText) => {
-    setIsGenerating(true);
-    setTimeout(() => {
-      const result = gcodeParser.parse(gcodeText);
-      setToolpathData(result);
-      if (simEngineRef.current) {
-        simEngineRef.current.loadToolpath(result);
-      }
-      setIsGenerating(false);
-      setSimState('ready');
-    }, 100);
   };
 
   // Playback Handlers
@@ -250,62 +229,84 @@ export default function App() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', width: '100vw', height: '100vh', overflow: 'hidden' }}>
-      
-      {/* Top Navbar */}
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      width: '100vw',
+      height: '100vh',
+      background: 'var(--bg-primary)',
+      color: 'var(--text-primary)',
+      overflow: 'hidden'
+    }}>
+      {/* Pinterest-Style Modern Studio Header */}
       <header style={{
-        height: '48px',
+        height: '56px',
+        padding: '0 20px',
         background: 'var(--bg-secondary)',
         borderBottom: '1px solid var(--border-color)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: '0 16px',
-        zIndex: 30
+        zIndex: 30,
+        boxShadow: 'var(--shadow-sm)'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        {/* Left Branding */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
           <div style={{
-            width: '28px',
-            height: '28px',
-            borderRadius: '6px',
-            background: 'linear-gradient(135deg, var(--accent-blue), var(--accent-cyan))',
+            width: '32px',
+            height: '32px',
+            borderRadius: '10px',
+            background: 'var(--accent-primary)',
+            color: 'var(--bg-secondary)',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center'
+            justifyContent: 'center',
+            fontWeight: 800,
+            fontSize: '14px',
+            boxShadow: 'var(--shadow-sm)'
           }}>
-            <Cpu size={16} color="#fff" />
+            <Cpu size={18} />
           </div>
           <div>
-            <h1 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '0.3px' }}>
-              DIGITAL CNC TWIN <span style={{ color: 'var(--accent-blue)', fontWeight: 500 }}>MILLING SIMULATOR</span>
+            <h1 style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.3px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              CNC DIGITAL TWIN
+              <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)' }}>STUDIO</span>
             </h1>
           </div>
           <span style={{
-            fontSize: '10px',
-            background: 'rgba(37, 99, 235, 0.08)',
-            border: '1px solid rgba(37, 99, 235, 0.25)',
-            color: 'var(--accent-blue)',
-            padding: '2px 6px',
-            borderRadius: '4px',
+            fontSize: '11px',
+            background: 'var(--bg-tertiary)',
+            border: '1px solid var(--border-color)',
+            color: 'var(--text-secondary)',
+            padding: '3px 10px',
+            borderRadius: 'var(--radius-pill)',
             fontWeight: 600
           }}>
-            CAD TWIN: main.STEP
+            CAD: main.STEP
           </span>
         </div>
 
-        {/* Center Machine State Indicator */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}>
-            <span style={{
-              width: '8px',
-              height: '8px',
-              borderRadius: '50%',
-              background: simState === 'running' ? 'var(--accent-green)' :
-                          simState === 'paused' ? 'var(--accent-yellow)' :
-                          simState === 'complete' ? 'var(--accent-purple)' : 'var(--accent-cyan)'
-            }} />
-            <span style={{ color: 'var(--text-secondary)' }}>Status:</span>
-            <span style={{ fontWeight: 600, textTransform: 'capitalize' }}>{simState}</span>
+        {/* Center Active Part Pill */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            background: 'var(--bg-primary)',
+            border: '1px solid var(--border-color)',
+            padding: '5px 14px',
+            borderRadius: 'var(--radius-pill)',
+            fontSize: '12px'
+          }}>
+            <Box size={14} color="var(--text-muted)" />
+            <span style={{ color: 'var(--text-muted)' }}>Workpiece:</span>
+            <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>
+              {typeof userPartFile === 'string' ? userPartFile.split('/').pop().replace('.stl', '') : userPartFile?.name || 'Custom Model'}
+            </span>
+            <span style={{ color: 'var(--text-muted)' }}>•</span>
+            <span style={{ fontWeight: 600, color: 'var(--accent-green)' }}>
+              {stockConfig.material.toUpperCase()}
+            </span>
           </div>
         </div>
 
@@ -313,7 +314,7 @@ export default function App() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <button
             onClick={toggleTheme}
-            style={{ fontSize: '12px', padding: '5px 10px' }}
+            style={{ fontSize: '12px', padding: '6px 14px', borderRadius: 'var(--radius-pill)' }}
             title={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
           >
             {theme === 'light' ? <Moon size={14} /> : <Sun size={14} />}
@@ -322,17 +323,17 @@ export default function App() {
 
           <button
             onClick={() => setShowInspection(true)}
-            style={{ fontSize: '12px', padding: '5px 10px' }}
+            style={{ fontSize: '12px', padding: '6px 14px', borderRadius: 'var(--radius-pill)' }}
           >
-            <Activity size={13} /> Inspection & Report
+            <Activity size={14} /> Quality Report
           </button>
           
           <button
             onClick={handleStart}
             className="primary"
-            style={{ fontSize: '12px', padding: '5px 12px' }}
+            style={{ fontSize: '12px', padding: '6px 18px', borderRadius: 'var(--radius-pill)', gap: '6px' }}
           >
-            <Play size={13} /> Run Simulation
+            <Play size={14} /> Run Machining
           </button>
         </div>
       </header>
@@ -355,7 +356,6 @@ export default function App() {
           cadStats={cadStats}
           onAutoFitStock={handleAutoFitStock}
           onGenerateToolpath={generateToolpath}
-          onLoadCustomGCode={handleLoadCustomGCode}
           isGenerating={isGenerating}
         />
 
@@ -372,30 +372,19 @@ export default function App() {
           />
         </div>
 
-        {/* Right Panels: Status DRO + G-Code Table */}
-        <div style={{ display: 'flex', flexDirection: 'column', width: '340px', height: '100%' }}>
-          <div style={{ height: '52%', overflowY: 'auto' }}>
-            <StatusPanel
-              dro={dro}
-              simState={simState}
-              currentOperation={currentOperation}
-              kinematics={kinematics}
-              activeGCode={activeGCode}
-            />
-          </div>
-          <div style={{ height: '48%' }}>
-            <GCodeViewer
-              gcode={toolpathData?.gcode || []}
-              activeGCodeIndex={activeGCodeIndex}
-              onSelectLine={(idx) => {
-                if (simEngineRef.current) {
-                  const targetPt = toolpathData?.points[idx];
-                  if (targetPt) kinematics.moveTo(targetPt.x, targetPt.y, targetPt.z);
-                }
-              }}
-            />
-          </div>
-        </div>
+        {/* Right Manufacturing Telemetry & Stage Pipeline (No G-Code clutter!) */}
+        <ManufacturingPanel
+          dro={dro}
+          simState={simState}
+          currentOperation={currentOperation}
+          kinematics={kinematics}
+          operations={operations}
+          progressPercent={progressPercent}
+          stockConfig={stockConfig}
+          toolConfig={toolConfig}
+          elapsedTimeSec={elapsedTimeSec}
+          removedPercent={removedPercent}
+        />
 
       </div>
 
@@ -417,14 +406,13 @@ export default function App() {
         currentOperation={currentOperation}
       />
 
-      {/* Post-Machining Inspection Dialog */}
+      {/* Post-Machining Quality Inspection Dialog */}
       <InspectionModal
         isOpen={showInspection}
         onClose={() => setShowInspection(false)}
         stats={toolpathData?.stats}
         stockConfig={stockConfig}
         toolConfig={toolConfig}
-        gcode={toolpathData?.gcode || []}
       />
 
     </div>

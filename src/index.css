@@ -1,42 +1,66 @@
 :root {
-  /* Light Mode Palette (Default) */
+  /* Pinterest / Modern Design Studio Palette (Light Mode Default) */
   --bg-primary: #f8fafc;
   --bg-secondary: #ffffff;
   --bg-tertiary: #f1f5f9;
-  --bg-panel: rgba(255, 255, 255, 0.92);
+  --bg-hover: #e2e8f0;
+  --bg-panel: rgba(255, 255, 255, 0.94);
+  
   --border-color: #e2e8f0;
-  --border-focus: #3b82f6;
+  --border-subtle: #edf2f7;
+  --border-focus: #111827;
+  
   --text-primary: #0f172a;
   --text-secondary: #475569;
-  --text-muted: #64748b;
-  --accent-blue: #2563eb;
-  --accent-cyan: #0891b2;
-  --accent-green: #16a34a;
+  --text-muted: #94a3b8;
+  
+  --accent-primary: #0f172a;      /* Bold Pinterest Ink Charcoal */
+  --accent-blue: #2563eb;         /* Precision Studio Blue */
+  --accent-cyan: #0284c7;
+  --accent-green: #059669;        /* Production Emerald */
   --accent-yellow: #d97706;
-  --accent-red: #dc2626;
-  --accent-purple: #7c3aed;
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
-  --card-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+  --accent-red: #e11d48;
+  
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', monospace;
+  
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+  --shadow-md: 0 4px 16px -2px rgba(15, 23, 42, 0.06), 0 2px 6px -1px rgba(15, 23, 42, 0.03);
+  --shadow-lg: 0 12px 32px -4px rgba(15, 23, 42, 0.08), 0 4px 12px -2px rgba(15, 23, 42, 0.04);
+  --card-shadow: var(--shadow-md);
+  
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-pill: 9999px;
 }
 
 [data-theme="dark"] {
-  --bg-primary: #0d1117;
-  --bg-secondary: #161b22;
-  --bg-tertiary: #21262d;
-  --bg-panel: rgba(22, 27, 34, 0.88);
-  --border-color: #30363d;
-  --border-focus: #58a6ff;
-  --text-primary: #f0f6fc;
-  --text-secondary: #8b949e;
-  --text-muted: #6e7681;
-  --accent-blue: #388bfd;
-  --accent-cyan: #39c5cf;
-  --accent-green: #3fb950;
-  --accent-yellow: #d29922;
-  --accent-red: #f85149;
-  --accent-purple: #bc8cff;
-  --card-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  --bg-primary: #0b0f19;
+  --bg-secondary: #131b2e;
+  --bg-tertiary: #1e293b;
+  --bg-hover: #293548;
+  --bg-panel: rgba(19, 27, 46, 0.92);
+  
+  --border-color: #27354a;
+  --border-subtle: #1e293b;
+  --border-focus: #60a5fa;
+  
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  
+  --accent-primary: #f8fafc;
+  --accent-blue: #3b82f6;
+  --accent-cyan: #38bdf8;
+  --accent-green: #10b981;
+  --accent-yellow: #f59e0b;
+  --accent-red: #f43f5e;
+  
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 6px 20px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 14px 40px rgba(0, 0, 0, 0.6);
+  --card-shadow: var(--shadow-md);
 }
 
 * {
@@ -54,98 +78,114 @@ body {
   width: 100vw;
   user-select: none;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Custom Scrollbar */
+/* Custom Sleek Scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--bg-primary);
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
   background: var(--border-color);
-  border-radius: 3px;
+  border-radius: var(--radius-pill);
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--text-muted);
 }
 
+/* Pinterest / Clean Studio Buttons */
 button {
   font-family: inherit;
   cursor: pointer;
   border: 1px solid var(--border-color);
   background: var(--bg-secondary);
   color: var(--text-primary);
-  border-radius: 6px;
-  padding: 6px 12px;
-  font-size: 13px;
-  font-weight: 500;
-  transition: all 0.15s ease;
+  border-radius: var(--radius-pill);
+  padding: 7px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--shadow-sm);
 }
 
 button:hover:not(:disabled) {
   background: var(--bg-tertiary);
   border-color: #cbd5e1;
+  transform: translateY(-1px);
 }
 
 button:active:not(:disabled) {
-  transform: translateY(1px);
+  transform: translateY(0);
 }
 
 button:disabled {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
 button.primary {
-  background: #16a34a;
-  border-color: #15803d;
-  color: #fff;
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: var(--bg-secondary);
 }
 button.primary:hover:not(:disabled) {
-  background: #15803d;
+  opacity: 0.92;
+  background: var(--accent-primary);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.18);
 }
 
 button.accent {
   background: var(--accent-blue);
-  border-color: #1d4ed8;
-  color: #fff;
+  border-color: var(--accent-blue);
+  color: #ffffff;
 }
 button.accent:hover:not(:disabled) {
   background: #1d4ed8;
+  border-color: #1d4ed8;
+}
+
+button.success {
+  background: var(--accent-green);
+  border-color: var(--accent-green);
+  color: #ffffff;
+}
+button.success:hover:not(:disabled) {
+  background: #047857;
 }
 
 button.danger {
-  background: rgba(220, 38, 38, 0.1);
-  border-color: rgba(220, 38, 38, 0.3);
+  background: rgba(225, 29, 72, 0.08);
+  border-color: rgba(225, 29, 72, 0.25);
   color: var(--accent-red);
 }
 button.danger:hover:not(:disabled) {
-  background: rgba(220, 38, 38, 0.2);
+  background: rgba(225, 29, 72, 0.16);
 }
 
+/* Inputs & Form Controls */
 input, select {
   font-family: inherit;
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
   color: var(--text-primary);
-  border-radius: 6px;
-  padding: 6px 10px;
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
   font-size: 13px;
   outline: none;
-  transition: border-color 0.15s;
+  transition: all 0.15s ease;
 }
 
 input:focus, select:focus {
-  border-color: var(--border-focus);
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
 }
 
 .mono {
@@ -155,27 +195,39 @@ input:focus, select:focus {
 /* Glassmorphism Panel */
 .glass-panel {
   background: var(--bg-panel);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--border-color);
   box-shadow: var(--card-shadow);
 }
 
-/* Badges */
+/* Pinterest Pill Badges */
 .badge {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 2px 8px;
-  border-radius: 12px;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
   font-size: 11px;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.2px;
 }
 
-.badge-ready { background: rgba(8, 145, 178, 0.12); color: var(--accent-cyan); border: 1px solid rgba(8, 145, 178, 0.25); }
-.badge-running { background: rgba(22, 163, 74, 0.12); color: var(--accent-green); border: 1px solid rgba(22, 163, 74, 0.25); }
-.badge-paused { background: rgba(217, 119, 6, 0.12); color: var(--accent-yellow); border: 1px solid rgba(217, 119, 6, 0.25); }
-.badge-error { background: rgba(220, 38, 38, 0.12); color: var(--accent-red); border: 1px solid rgba(220, 38, 38, 0.25); }
-.badge-complete { background: rgba(124, 58, 237, 0.12); color: var(--accent-purple); border: 1px solid rgba(124, 58, 237, 0.25); }
+.badge-ready { background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
+.badge-running { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+.badge-paused { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
+.badge-error { background: #ffe4e6; color: #be123c; border: 1px solid #fecdd3; }
+.badge-complete { background: #f3e8ff; color: #7e22ce; border: 1px solid #e9d5ff; }
+
+/* Pinterest-style clean card */
+.pinterest-card {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--card-shadow);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease;
+}
+
+.pinterest-card:hover {
+  box-shadow: var(--shadow-lg);
+}
