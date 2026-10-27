@@ -14,8 +14,8 @@ import { CAMEngine } from './engine/CAMEngine';
 import { CADImporter } from './engine/CADImporter';
 
 export default function App() {
-  // Theme state: defaults to dark studio mode for professional engineering contrast
-  const [theme, setTheme] = useState('dark');
+  // Theme state: defaults to Aura light bento grid mode
+  const [theme, setTheme] = useState('light');
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -244,6 +244,24 @@ export default function App() {
     if (simEngineRef.current) simEngineRef.current.seek(pct);
   };
 
+  const handleQuickAddOp = (type) => {
+    const templates = {
+      facing: { name: 'Top Surfacing Pass', depth: 1.0, type: 'facing', enabled: true },
+      roughing: { name: '3D Adaptive Roughing', depth: 8.0, type: 'roughing', enabled: true },
+      pocketing: { name: 'Center Cavity Pocket', depth: 8.0, width: 60, length: 40, type: 'pocketing', enabled: true },
+      contouring: { name: 'Perimeter Profile Finish', depth: 12.0, type: 'contouring', enabled: true }
+    };
+    const template = templates[type] || templates.facing;
+    const newOp = {
+      id: Date.now(),
+      ...template
+    };
+    const nextOps = [...operations, newOp];
+    setOperations(nextOps);
+    setSelectedItem({ type: 'operation', id: newOp.id });
+    setNeedsRegen(true);
+  };
+
   // Estimated cycle time from toolpath stats or calculated distance
   const estimatedTimeSec = toolpathData?.stats?.estimatedTimeSec || 
     (toolpathData?.points?.length ? Math.round(toolpathData.points.length * 0.14) : 85);
@@ -266,6 +284,7 @@ export default function App() {
         onOpenInspection={() => setShowInspection(true)}
         theme={theme}
         onToggleTheme={toggleTheme}
+        onQuickAddOp={handleQuickAddOp}
       />
 
       {/* 2. Main 3-Column Studio Workspace */}

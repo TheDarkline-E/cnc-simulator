@@ -1087,10 +1087,29 @@ export default function Viewport3D({
         blowOffChips: handleBlowOffChips,
         cycleWorkpieceMode,
         cycleEnclosureMode,
-        cycleQualityTier
+        cycleQualityTier,
+        toggleMachine: () => {
+          setShowMachine(prev => {
+            const next = !prev;
+            if (machineRootRef.current) machineRootRef.current.visible = next;
+            return next;
+          });
+        },
+        toggleToolpath: () => {
+          setShowToolpath(prev => !prev);
+        },
+        setExploded: (factor) => {
+          setExplodedFactor(factor);
+          if (kinematics) kinematics.setExplodedFactor(factor);
+        },
+        showMachine,
+        showToolpath,
+        enclosureMode,
+        workpieceMode,
+        explodedFactor
       };
     }
-  }, [apiRef, enclosureMode]);
+  }, [apiRef, enclosureMode, workpieceMode, showMachine, showToolpath, explodedFactor]);
 
   const currentPreset = MATERIAL_PRESETS[stockConfig?.material] || MATERIAL_PRESETS.al6061;
 

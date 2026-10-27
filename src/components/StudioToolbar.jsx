@@ -2,12 +2,11 @@ import React from 'react';
 import { 
   Box, Play, Pause, RotateCcw, RefreshCw, 
   Sun, Moon, ClipboardCheck, Sliders, Layers,
-  Compass, ShieldCheck, CheckCircle2, ChevronRight,
-  Sparkles
+  Disc, CheckCircle2
 } from 'lucide-react';
 
 export default function StudioToolbar({
-  projectName = "Precision CNC Milling Studio",
+  projectName = "Haas VF-2SS Machining Studio",
   setupName = "Setup 1 (G54)",
   stockConfig,
   toolConfig,
@@ -19,8 +18,9 @@ export default function StudioToolbar({
   onResume,
   onReset,
   onOpenInspection,
-  theme = 'light',
-  onToggleTheme
+  theme = 'dark',
+  onToggleTheme,
+  onQuickAddOp
 }) {
   const isRunning = simState === 'running';
   const isPaused = simState === 'paused';
@@ -39,128 +39,183 @@ export default function StudioToolbar({
   const matName = materialNames[stockConfig?.material] || 'Al 6061-T6';
 
   return (
-    <header className="studio-toolbar" role="banner">
-      {/* Left: Branding & Setup Lockup */}
-      <div className="toolbar-left">
-        <div className="toolbar-brand">
-          <div className="brand-badge" aria-hidden="true">
-            <Box size={18} strokeWidth={2.2} />
+    <header className="cad-studio-ribbon" role="banner">
+      {/* Left: Aura Brand & Workspace Identity */}
+      <div className="ribbon-section ribbon-left">
+        <div className="app-symbol" aria-hidden="true">
+          <svg width="28" height="28" viewBox="0 0 80 80" fill="none" className="aura-brand-orb">
+            <defs>
+              <linearGradient id="orbLimeTop" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#e3f9b3" />
+                <stop offset="55%" stopColor="#c6ee78" />
+                <stop offset="100%" stopColor="#a5d856" />
+              </linearGradient>
+              <linearGradient id="orbPurpleMid" x1="15%" y1="0%" x2="85%" y2="100%">
+                <stop offset="0%" stopColor="#dcd0ff" />
+                <stop offset="50%" stopColor="#b69ef8" />
+                <stop offset="100%" stopColor="#9e82f2" />
+              </linearGradient>
+              <radialGradient id="orbFrostLeft" cx="35%" cy="45%" r="65%">
+                <stop offset="0%" stopColor="#ffffff" stopOpacity="0.95" />
+                <stop offset="55%" stopColor="#e3e2ea" stopOpacity="0.9" />
+                <stop offset="100%" stopColor="#c4bce0" stopOpacity="0.85" />
+              </radialGradient>
+              <linearGradient id="orbLimeBottom" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#eefd80" />
+                <stop offset="40%" stopColor="#d2f48e" />
+                <stop offset="100%" stopColor="#b8e468" />
+              </linearGradient>
+            </defs>
+            <ellipse cx="40" cy="40" rx="22" ry="33" transform="rotate(-28 40 40)" fill="url(#orbLimeTop)" />
+            <ellipse cx="45" cy="44" rx="18" ry="29" transform="rotate(-24 45 44)" fill="url(#orbLimeBottom)" opacity="0.85" />
+            <ellipse cx="42" cy="41" rx="21" ry="32" transform="rotate(32 42 41)" fill="url(#orbPurpleMid)" opacity="0.92" />
+            <circle cx="35" cy="41" r="21" fill="url(#orbFrostLeft)" />
+          </svg>
+        </div>
+        <div className="doc-metadata">
+          <div className="brand-wordmark-row">
+            <span className="brand-aura-name">aura</span>
+            <span className="brand-aura-tag">cnc studio</span>
           </div>
-          <div className="brand-titles">
-            <h1 className="brand-heading">{projectName}</h1>
-            <div className="brand-subline">
-              <span className="setup-chip">{setupName}</span>
-              <span className="bullet-sep">·</span>
-              <span className="spec-chip">WCS: G54 (Top-Center)</span>
-              <span className="bullet-sep">·</span>
-              <span className="spec-chip">{stockConfig?.width}×{stockConfig?.length}×{stockConfig?.height} mm</span>
-              <span className="bullet-sep">·</span>
-              <span className="alloy-chip">{matName}</span>
-            </div>
-          </div>
+          <span className="doc-setup-tag">Setup 1 · G54</span>
         </div>
       </div>
 
-      {/* Center: Live Studio Status / Feedback Pill */}
-      <div className="toolbar-center">
-        <div className={`status-pill status-${simState}`}>
-          <span className="status-indicator-dot" />
-          <span className="status-pill-text">
-            {simState === 'running' && 'Simulation Active'}
-            {simState === 'paused' && 'Feed Hold / Paused'}
-            {simState === 'complete' && 'Cycle Complete · Inspection Ready'}
-            {simState === 'ready' && 'Machining Program Ready'}
-            {simState === 'idle' && 'Standby'}
-          </span>
-          {isGenerating && (
-            <span className="generating-badge">
-              <RefreshCw size={12} className="spin-icon" /> Computing Passes...
-            </span>
-          )}
+      {/* Center: Quick CAM Operations & Simulation Pill Controls */}
+      <div className="ribbon-section ribbon-center">
+        {/* Quick Operation Inserters */}
+        <div className="ribbon-tool-group" role="group" aria-label="Quick operations">
+          <button
+            type="button"
+            className="ribbon-btn pill-btn-op"
+            onClick={() => onQuickAddOp?.('facing')}
+            title="Create Face Milling Operation"
+          >
+            <Disc size={13} />
+            <span>Face</span>
+          </button>
+          <button
+            type="button"
+            className="ribbon-btn pill-btn-op"
+            onClick={() => onQuickAddOp?.('roughing')}
+            title="Create 3D Adaptive Roughing Operation"
+          >
+            <Layers size={13} />
+            <span>Adaptive</span>
+          </button>
+          <button
+            type="button"
+            className="ribbon-btn pill-btn-op"
+            onClick={() => onQuickAddOp?.('pocketing')}
+            title="Create Cavity Pocket Operation"
+          >
+            <Box size={13} />
+            <span>Pocket</span>
+          </button>
+          <button
+            type="button"
+            className="ribbon-btn pill-btn-op"
+            onClick={() => onQuickAddOp?.('contouring')}
+            title="Create 2D Contour Finish Operation"
+          >
+            <CheckCircle2 size={13} />
+            <span>Contour</span>
+          </button>
         </div>
-      </div>
 
-      {/* Right: Primary CAM Actions */}
-      <div className="toolbar-right">
-        {/* Regenerate Toolpaths Button */}
+        <div className="ribbon-divider" />
+
+        {/* Regenerate Action */}
         <button
           type="button"
-          className="btn-toolbar btn-secondary"
+          className="ribbon-btn pill-btn-regen"
           onClick={onRegenerate}
           disabled={isRunning || isGenerating}
-          title="Regenerate all CAM toolpaths with current parameters"
+          title="Regenerate all toolpaths with current parameters"
         >
-          <RefreshCw size={14} className={isGenerating ? 'spin-icon' : ''} />
-          <span>Regenerate Passes</span>
+          <RefreshCw size={13} className={isGenerating ? 'spin-icon' : ''} />
+          <span>{isGenerating ? 'Regenerating...' : 'Regenerate'}</span>
         </button>
 
-        {/* Primary Simulation Action */}
+        {/* Primary Simulation Button */}
         {isRunning ? (
           <button
             type="button"
-            className="btn-toolbar btn-primary is-pause"
+            className="ribbon-btn btn-state-pause pill-btn-primary"
             onClick={onPause}
             title="Pause physical simulation (Feed Hold)"
           >
-            <Pause size={14} fill="currentColor" />
+            <Pause size={13} fill="currentColor" />
             <span>Feed Hold</span>
           </button>
         ) : isPaused ? (
           <button
             type="button"
-            className="btn-toolbar btn-primary is-resume"
+            className="ribbon-btn btn-state-run pill-btn-primary"
             onClick={onResume}
-            title="Resume machining simulation"
+            title="Resume machining cycle"
           >
-            <Play size={14} fill="currentColor" />
+            <Play size={13} fill="currentColor" />
             <span>Resume Cycle</span>
           </button>
         ) : (
           <button
             type="button"
-            className="btn-toolbar btn-primary is-start"
+            className="ribbon-btn btn-state-run pill-btn-primary"
             onClick={onStart}
             disabled={isGenerating}
-            title="Start CNC digital twin simulation"
+            title="Run CAM simulation with physical material removal"
           >
-            <Play size={14} fill="currentColor" />
+            <Play size={13} fill="currentColor" />
             <span>Simulate Job</span>
           </button>
         )}
 
         <button
           type="button"
-          className="btn-toolbar btn-ghost"
+          className="ribbon-btn pill-btn-reset"
           onClick={onReset}
           disabled={isRunning}
-          title="Reset tool to safe home and restore stock"
+          title="Reset spindle to home and restore raw stock"
         >
-          <RotateCcw size={14} />
+          <RotateCcw size={13} />
           <span>Reset</span>
         </button>
+      </div>
 
-        <div className="toolbar-divider" />
+      {/* Right: Technical Metadata & Aura Swatches */}
+      <div className="ribbon-section ribbon-right">
+        <div className="ribbon-stock-spec" title="Raw Stock Billet Dimensions">
+          <span className="spec-alloy">{matName}</span>
+          <span className="spec-dim mono">{stockConfig?.width}×{stockConfig?.length}×{stockConfig?.height}</span>
+        </div>
 
-        {/* Quality Metrology Certificate Dialog */}
+        {/* Aura Brand Bento Swatches */}
+        <div className="aura-swatches-pill-group" title="Aura Brand Swatches">
+          <div className="aura-mini-swatch swatch-lime" />
+          <div className="aura-mini-swatch swatch-lavender" />
+        </div>
+
+        <div className="ribbon-divider" />
+
         <button
           type="button"
-          className="btn-toolbar btn-ghost icon-only"
+          className="ribbon-btn icon-only pill-icon-btn"
           onClick={onOpenInspection}
-          title="View Machining Metrology & Quality Certificate"
+          title="Inspection & Metrology Certificate"
           aria-label="Quality Certificate"
         >
-          <ClipboardCheck size={16} />
+          <ClipboardCheck size={14} />
         </button>
 
-        {/* Theme Switcher */}
         <button
           type="button"
-          className="btn-toolbar btn-ghost icon-only"
+          className="ribbon-btn icon-only pill-icon-btn"
           onClick={onToggleTheme}
-          title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+          title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} UI mode`}
           aria-label="Toggle theme"
         >
-          {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+          {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
         </button>
       </div>
     </header>

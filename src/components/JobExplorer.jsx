@@ -3,7 +3,7 @@ import {
   Folder, FolderOpen, Box, Layers, Wrench, Disc, 
   CheckCircle2, Plus, Trash2, Eye, EyeOff, 
   ChevronRight, ChevronDown, Activity, RefreshCw,
-  Sparkles, FileCode, Sliders, AlertCircle
+  Sparkles, FileCode, Sliders, AlertCircle, X
 } from 'lucide-react';
 
 export default function JobExplorer({
@@ -68,38 +68,35 @@ export default function JobExplorer({
   };
 
   return (
-    <aside className="job-explorer-panel" aria-label="CAM Job Explorer">
-      {/* Explorer Header */}
-      <div className="explorer-header">
-        <div className="explorer-title-lockup">
-          <Layers size={15} className="panel-title-icon" />
-          <h2 className="explorer-title">Job Explorer</h2>
-        </div>
-        <div className="explorer-actions">
-          <div className="relative-container">
+    <aside className="engineering-browser" aria-label="CAM Feature Tree Browser">
+      {/* Browser Title Strip */}
+      <div className="browser-header">
+        <span className="browser-title-text">CAM BROWSER</span>
+        <div className="browser-actions-group">
+          <div className="add-op-dropdown-container">
             <button
               type="button"
-              className="btn-add-op"
+              className="btn-browser-icon"
               onClick={() => setShowAddMenu(!showAddMenu)}
               title="Add Machining Operation"
             >
-              <Plus size={13} strokeWidth={2.5} />
+              <Plus size={13} />
               <span>Operation</span>
             </button>
 
             {showAddMenu && (
-              <div className="dropdown-add-menu">
+              <div className="browser-dropdown-menu">
                 <button type="button" onClick={() => handleAddOperation('facing')}>
-                  <Disc size={13} /> Top Facing Pass
+                  <Disc size={12} /> Top Facing Pass
                 </button>
                 <button type="button" onClick={() => handleAddOperation('roughing')}>
-                  <Layers size={13} /> 3D Adaptive Roughing
+                  <Layers size={12} /> 3D Adaptive Roughing
                 </button>
                 <button type="button" onClick={() => handleAddOperation('pocketing')}>
-                  <Box size={13} /> Cavity Pocketing
+                  <Box size={12} /> Cavity Pocketing
                 </button>
                 <button type="button" onClick={() => handleAddOperation('contouring')}>
-                  <CheckCircle2 size={13} /> Wall Contouring
+                  <CheckCircle2 size={12} /> Wall Contouring
                 </button>
               </div>
             )}
@@ -107,157 +104,142 @@ export default function JobExplorer({
         </div>
       </div>
 
-      {/* Explorer Tree View */}
-      <div className="explorer-tree-scroll" onClick={() => setShowAddMenu(false)}>
-        {/* Level 1: Setup Root */}
-        <div className="tree-group">
-          <div 
-            className={`tree-node tree-folder ${selectedItem?.type === 'setup' ? 'is-selected' : ''}`}
-            onClick={() => onSelectItem({ type: 'setup' })}
+      {/* Structured Tree Hierarchy */}
+      <div className="browser-tree-view" onClick={() => setShowAddMenu(false)}>
+        {/* Setup 1 Node */}
+        <div 
+          className={`tree-row tree-level-0 ${selectedItem?.type === 'setup' ? 'is-selected' : ''}`}
+          onClick={() => onSelectItem({ type: 'setup' })}
+        >
+          <button 
+            type="button" 
+            className="tree-twisty"
+            onClick={(e) => { e.stopPropagation(); setSetupExpanded(!setupExpanded); }}
           >
-            <button 
-              type="button" 
-              className="tree-expand-btn"
-              onClick={(e) => { e.stopPropagation(); setSetupExpanded(!setupExpanded); }}
+            {setupExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+          </button>
+          <FolderOpen size={13} className="tree-node-icon icon-setup" />
+          <span className="tree-text-primary">Setup1 (Haas VF-2SS)</span>
+          <span className="tree-tag-datum">G54</span>
+        </div>
+
+        {setupExpanded && (
+          <div className="tree-branch-group">
+            {/* Stock Billet Node */}
+            <div 
+              className={`tree-row tree-level-1 ${selectedItem?.type === 'stock' ? 'is-selected' : ''}`}
+              onClick={() => onSelectItem({ type: 'stock' })}
             >
-              {setupExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-            </button>
-            <FolderOpen size={15} className="folder-icon" />
-            <span className="node-label">Setup 1 · Haas VF-2SS</span>
-            <span className="node-badge-wcs">G54</span>
-          </div>
+              <span className="tree-indent-guide" />
+              <Box size={12} className="tree-node-icon icon-stock" />
+              <span className="tree-text-primary">Stock Billet</span>
+              <span className="tree-text-dim mono">{stockConfig?.width}×{stockConfig?.length}×{stockConfig?.height}</span>
+              <span className="tree-tag-alloy">{stockConfig?.material?.toUpperCase()}</span>
+            </div>
 
-          {setupExpanded && (
-            <div className="tree-children">
-              {/* Item: Stock Billet */}
-              <div 
-                className={`tree-node tree-leaf ${selectedItem?.type === 'stock' ? 'is-selected' : ''}`}
-                onClick={() => onSelectItem({ type: 'stock' })}
-              >
-                <span className="tree-leaf-indent" />
-                <Box size={14} className="node-icon icon-stock" />
-                <div className="node-text-group">
-                  <span className="node-label">Stock Billet</span>
-                  <span className="node-sublabel">{stockConfig?.width}×{stockConfig?.length}×{stockConfig?.height} mm</span>
-                </div>
-                <span className="node-tag">{stockConfig?.material?.toUpperCase() || 'AL6061'}</span>
-              </div>
+            {/* Part Model Node */}
+            <div 
+              className={`tree-row tree-level-1 ${selectedItem?.type === 'part' ? 'is-selected' : ''}`}
+              onClick={() => onSelectItem({ type: 'part' })}
+            >
+              <span className="tree-indent-guide" />
+              <Sparkles size={12} className="tree-node-icon icon-part" />
+              <span className="tree-text-primary" title={partDisplayName}>{partDisplayName}</span>
+              {cadStats && (
+                <span className="tree-text-dim mono">{Math.round((cadStats.triangles || 0) / 1000)}k Δ</span>
+              )}
+            </div>
 
-              {/* Item: Part CAD Model */}
-              <div 
-                className={`tree-node tree-leaf ${selectedItem?.type === 'part' ? 'is-selected' : ''}`}
-                onClick={() => onSelectItem({ type: 'part' })}
-              >
-                <span className="tree-leaf-indent" />
-                <Sparkles size={14} className="node-icon icon-part" />
-                <div className="node-text-group">
-                  <span className="node-label">Part Model</span>
-                  <span className="node-sublabel" title={partDisplayName}>{partDisplayName}</span>
-                </div>
-                {cadStats && (
-                  <span className="node-tag">{cadStats.triangles ? `${Math.round(cadStats.triangles / 1000)}k Δ` : '3D'}</span>
-                )}
-              </div>
+            {/* Tool Node */}
+            <div 
+              className={`tree-row tree-level-1 ${selectedItem?.type === 'tool' ? 'is-selected' : ''}`}
+              onClick={() => onSelectItem({ type: 'tool' })}
+            >
+              <span className="tree-indent-guide" />
+              <Wrench size={12} className="tree-node-icon icon-tool" />
+              <span className="tree-text-primary">T{toolConfig?.number || 1}: Ø{toolConfig?.diameter || 6}mm End Mill</span>
+              <span className="tree-text-dim mono">{toolConfig?.flutes || 2}F</span>
+            </div>
 
-              {/* Item: Tool Library / Active Cutter */}
-              <div 
-                className={`tree-node tree-leaf ${selectedItem?.type === 'tool' ? 'is-selected' : ''}`}
-                onClick={() => onSelectItem({ type: 'tool' })}
-              >
-                <span className="tree-leaf-indent" />
-                <Wrench size={14} className="node-icon icon-tool" />
-                <div className="node-text-group">
-                  <span className="node-label">Tool T0{toolConfig?.number || 1}</span>
-                  <span className="node-sublabel">Ø{toolConfig?.diameter || 6}mm {toolConfig?.type?.replace(/_/g, ' ')}</span>
-                </div>
-                <span className="node-tag">{toolConfig?.flutes || 2}F</span>
-              </div>
+            {/* Operations Folder Node */}
+            <div 
+              className="tree-row tree-level-1 tree-group-header"
+              onClick={() => setOpsExpanded(!opsExpanded)}
+            >
+              <span className="tree-indent-guide" />
+              <button type="button" className="tree-twisty">
+                {opsExpanded ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+              </button>
+              <Layers size={12} className="tree-node-icon icon-ops" />
+              <span className="tree-text-primary">Operations</span>
+              <span className="tree-text-count">({operations.length})</span>
+              {needsRegen && (
+                <span className="tree-tag-regen" title="Parameters changed: regeneration recommended">Regen</span>
+              )}
+            </div>
 
-              {/* Subfolder: Operations List */}
-              <div className="tree-subgroup">
-                <div 
-                  className="tree-node tree-subfolder"
-                  onClick={() => setOpsExpanded(!opsExpanded)}
-                >
-                  <span className="tree-leaf-indent" />
-                  <button type="button" className="tree-expand-btn">
-                    {opsExpanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
-                  </button>
-                  <Layers size={14} className="node-icon icon-ops" />
-                  <span className="node-label font-medium">Operations ({operations.length})</span>
-                  {needsRegen && (
-                    <span className="regen-warning-tag" title="Parameters changed: toolpath regeneration recommended">
-                      <RefreshCw size={10} /> Regen
-                    </span>
-                  )}
-                </div>
+            {opsExpanded && (
+              <div className="tree-branch-group">
+                {operations.map((op, idx) => {
+                  const selected = selectedItem?.type === 'operation' && selectedItem?.id === op.id;
+                  const active = isOpActive(op.name);
 
-                {opsExpanded && (
-                  <div className="tree-op-list">
-                    {operations.map((op, idx) => {
-                      const selected = selectedItem?.type === 'operation' && selectedItem?.id === op.id;
-                      const active = isOpActive(op.name);
+                  return (
+                    <div
+                      key={op.id}
+                      className={`tree-row tree-level-2 tree-op-row ${selected ? 'is-selected' : ''} ${!op.enabled ? 'is-suppressed' : ''} ${active ? 'is-active-cutting' : ''}`}
+                      onClick={() => onSelectItem({ type: 'operation', id: op.id })}
+                    >
+                      <span className="tree-indent-guide" />
+                      <span className="tree-indent-guide" />
 
-                      return (
-                        <div
-                          key={op.id}
-                          className={`tree-node tree-op-item ${selected ? 'is-selected' : ''} ${!op.enabled ? 'is-suppressed' : ''} ${active ? 'is-cutting' : ''}`}
-                          onClick={() => onSelectItem({ type: 'operation', id: op.id })}
-                        >
-                          <span className="tree-op-indent" />
-                          <button
-                            type="button"
-                            className="btn-suppress"
-                            onClick={(e) => handleToggleOp(e, op.id)}
-                            title={op.enabled ? "Suppress operation" : "Unsuppress operation"}
-                          >
-                            {op.enabled ? <Eye size={13} /> : <EyeOff size={13} className="text-muted" />}
-                          </button>
+                      {/* Visibility / Suppress Toggle */}
+                      <button
+                        type="button"
+                        className="btn-tree-visibility"
+                        onClick={(e) => handleToggleOp(e, op.id)}
+                        title={op.enabled ? "Suppress operation" : "Unsuppress operation"}
+                      >
+                        {op.enabled ? <Eye size={12} /> : <EyeOff size={12} className="is-hidden" />}
+                      </button>
 
-                          <div className="op-info">
-                            <div className="op-name-row">
-                              <span className="op-index">{idx + 1}.</span>
-                              <span className="op-name">{op.name}</span>
-                            </div>
-                            <div className="op-meta-row">
-                              <span className="op-type-tag">{op.type}</span>
-                              <span className="op-depth-tag">Z -{op.depth}mm</span>
-                            </div>
-                          </div>
+                      <span className="tree-tool-callout mono">T{toolConfig?.number || 1}</span>
 
-                          {active ? (
-                            <span className="op-status-badge cutting">
-                              <Activity size={12} className="pulse-icon" /> Cutting
-                            </span>
-                          ) : !op.enabled ? (
-                            <span className="op-status-badge suppressed">Off</span>
-                          ) : (
-                            <span className="op-status-badge ready">Ready</span>
-                          )}
-
-                          <button
-                            type="button"
-                            className="btn-delete-op"
-                            onClick={(e) => handleDeleteOp(e, op.id)}
-                            title="Delete operation"
-                          >
-                            <Trash2 size={12} />
-                          </button>
-                        </div>
-                      );
-                    })}
-
-                    {operations.length === 0 && (
-                      <div className="empty-ops-hint">
-                        No operations defined. Click <strong>+ Operation</strong> above to add Facing, Roughing, or Pocketing.
+                      <div className="tree-op-details">
+                        <span className="tree-op-label">{idx + 1}: {op.name}</span>
+                        <span className="tree-op-depth mono">Z -{op.depth}mm</span>
                       </div>
-                    )}
+
+                      {active ? (
+                        <span className="tree-tag-active" title="Executing in simulation">
+                          <Activity size={10} className="pulse-icon" /> Cut
+                        </span>
+                      ) : !op.enabled ? (
+                        <span className="tree-tag-suppressed">Off</span>
+                      ) : null}
+
+                      {/* Delete Operation Button */}
+                      <button
+                        type="button"
+                        className="btn-tree-delete"
+                        onClick={(e) => handleDeleteOp(e, op.id)}
+                        title="Delete operation"
+                      >
+                        <X size={11} />
+                      </button>
+                    </div>
+                  );
+                })}
+
+                {operations.length === 0 && (
+                  <div className="tree-empty-hint">
+                    No operations in setup. Use <strong>+ Operation</strong> above.
                   </div>
                 )}
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </div>
     </aside>
   );

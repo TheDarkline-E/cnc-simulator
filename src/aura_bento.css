@@ -1,0 +1,1366 @@
+/* ==========================================================================
+   AURA BRAND BENTO GRID DESIGN SYSTEM FOR CNC STUDIO
+   Inspired directly by: aura_yoga_app_brand_bento_grid.html
+   Fonts: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif
+   Palette:
+     --bg-outer:     #f2f2f2;
+     --bg-board:     #ffffff;
+     --lavender:     #d8c9fe;
+     --lime-card:    #e8f6d8;
+     --sage-bottom:  #d8e6c9;
+     --off-white:    #f8f8f8;
+     --text-lime:    #c0e47c;
+     --text-lavender:#b4a3e2;
+     --text-care:    #cbc0e8;
+   ========================================================================== */
+
+:root {
+  --bg-outer: #f2f2f2;
+  --bg-board: #ffffff;
+  --lavender: #d8c9fe;
+  --lavender-hover: #cebcfc;
+  --lavender-shadow: rgba(216, 201, 254, 0.5);
+  --lime-card: #e8f6d8;
+  --lime-hover: #dcf2c7;
+  --lime-shadow: rgba(232, 246, 216, 0.6);
+  --sage-bottom: #d8e6c9;
+  --off-white: #f8f8f8;
+  --off-white-hover: #f0f0f0;
+  
+  --text-lime: #c0e47c;
+  --text-lavender: #b4a3e2;
+  --text-care: #cbc0e8;
+  --text-main: #111111;
+  --text-sub: #2b2b2b;
+  --text-dim: #777777;
+  --text-muted: #999999;
+  
+  --border-card: rgba(0, 0, 0, 0.05);
+  --border-subtle: rgba(0, 0, 0, 0.07);
+  --border-focus: #b4a3e2;
+  
+  --radius-board: 32px;
+  --radius-card: 22px;
+  --radius-inner: 18px;
+  --radius-input: 12px;
+  --radius-pill: 999px;
+  
+  --shadow-board: 0 20px 60px rgba(0, 0, 0, 0.045);
+  --shadow-card: 0 10px 30px rgba(0, 0, 0, 0.035);
+  --shadow-pill: 0 4px 14px rgba(0, 0, 0, 0.02);
+  
+  --font-sans: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+[data-theme="dark"] {
+  --bg-outer: #121316;
+  --bg-board: #1c1d22;
+  --lavender: #3b3252;
+  --lavender-hover: #483d64;
+  --lavender-shadow: rgba(0, 0, 0, 0.4);
+  --lime-card: #283626;
+  --lime-hover: #31442e;
+  --lime-shadow: rgba(0, 0, 0, 0.4);
+  --sage-bottom: #222d25;
+  --off-white: #26282f;
+  --off-white-hover: #2f323a;
+  
+  --text-lime: #b8e26e;
+  --text-lavender: #cbb9fb;
+  --text-care: #dbd0fb;
+  --text-main: #f5f5f7;
+  --text-sub: #c5c8d2;
+  --text-dim: #8b909f;
+  --text-muted: #646875;
+  
+  --border-card: rgba(255, 255, 255, 0.06);
+  --border-subtle: rgba(255, 255, 255, 0.09);
+  --border-focus: #b4a3e2;
+  
+  --shadow-board: 0 20px 60px rgba(0, 0, 0, 0.4);
+  --shadow-card: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+/* ==========================================================================
+   APP CONTAINER
+   ========================================================================== */
+body {
+  background-color: var(--bg-outer) !important;
+  font-family: var(--font-sans) !important;
+  color: var(--text-main) !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  -webkit-font-smoothing: antialiased !important;
+}
+
+.cam-studio-app {
+  width: 100vw !important;
+  height: 100vh !important;
+  box-sizing: border-box !important;
+  padding: 12px 14px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important;
+  overflow: hidden !important;
+  background-color: var(--bg-outer) !important;
+  color: var(--text-main) !important;
+  font-family: var(--font-sans) !important;
+  font-size: 11.5px !important;
+  line-height: 1.4 !important;
+  user-select: none !important;
+}
+
+/* ==========================================================================
+   1. TOP BENTO RIBBON CARD
+   ========================================================================== */
+.cad-studio-ribbon {
+  height: 52px !important;
+  min-height: 52px !important;
+  background: var(--bg-board) !important;
+  border-radius: var(--radius-card) !important;
+  box-shadow: var(--shadow-card) !important;
+  border: 1px solid var(--border-card) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 0 16px !important;
+  gap: 12px !important;
+  z-index: 30 !important;
+  box-sizing: border-box !important;
+}
+
+.ribbon-section {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.ribbon-left {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  min-width: 250px !important;
+}
+
+.app-symbol {
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: var(--radius-pill) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+  background: transparent !important;
+  border: none !important;
+}
+
+.aura-brand-orb {
+  width: 28px !important;
+  height: 28px !important;
+  display: block !important;
+}
+
+.doc-metadata {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+}
+
+.brand-wordmark-row {
+  display: flex !important;
+  align-items: baseline !important;
+  gap: 5px !important;
+}
+
+.brand-aura-name {
+  font-family: var(--font-sans) !important;
+  font-size: 20px !important;
+  font-weight: 400 !important;
+  color: var(--text-main) !important;
+  letter-spacing: -0.03em !important;
+  line-height: 1 !important;
+}
+
+.brand-aura-tag {
+  font-family: var(--font-sans) !important;
+  font-size: 11px !important;
+  font-weight: 300 !important;
+  color: var(--text-dim) !important;
+  letter-spacing: -0.01em !important;
+}
+
+.doc-setup-tag {
+  font-size: 10px !important;
+  color: var(--text-sub) !important;
+  background: var(--off-white) !important;
+  padding: 3px 10px !important;
+  border-radius: var(--radius-pill) !important;
+  border: 1px solid var(--border-subtle) !important;
+  letter-spacing: -0.01em !important;
+  white-space: nowrap !important;
+}
+
+.ribbon-center {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+
+.ribbon-tool-group {
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+}
+
+.ribbon-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  height: 30px !important;
+  padding: 0 12px !important;
+  border-radius: var(--radius-pill) !important;
+  border: 1px solid var(--border-subtle) !important;
+  background: var(--off-white) !important;
+  color: var(--text-main) !important;
+  font-family: var(--font-sans) !important;
+  font-size: 11px !important;
+  font-weight: 400 !important;
+  cursor: pointer !important;
+  transition: all 0.14s ease !important;
+  white-space: nowrap !important;
+  letter-spacing: -0.01em !important;
+}
+
+.ribbon-btn:hover:not(:disabled) {
+  background: var(--off-white-hover) !important;
+  border-color: rgba(0, 0, 0, 0.12) !important;
+}
+
+.ribbon-btn:disabled {
+  opacity: 0.4 !important;
+  cursor: not-allowed !important;
+}
+
+.ribbon-btn.pill-btn-op:hover:not(:disabled) {
+  background: var(--lime-card) !important;
+  color: #111111 !important;
+}
+
+.ribbon-btn.pill-btn-primary {
+  font-weight: 500 !important;
+  padding: 0 16px !important;
+}
+
+.ribbon-btn.btn-state-run {
+  background: var(--lavender) !important;
+  border-color: rgba(0, 0, 0, 0.04) !important;
+  color: #111111 !important;
+  box-shadow: 0 4px 14px var(--lavender-shadow) !important;
+}
+
+.ribbon-btn.btn-state-run:hover:not(:disabled) {
+  background: var(--lavender-hover) !important;
+  transform: translateY(-0.5px) !important;
+}
+
+.ribbon-btn.btn-state-pause {
+  background: var(--lime-card) !important;
+  border-color: rgba(0, 0, 0, 0.04) !important;
+  color: #111111 !important;
+  box-shadow: 0 4px 14px var(--lime-shadow) !important;
+}
+
+.ribbon-btn.btn-state-pause:hover:not(:disabled) {
+  background: var(--lime-hover) !important;
+  transform: translateY(-0.5px) !important;
+}
+
+.ribbon-divider {
+  width: 1px !important;
+  height: 18px !important;
+  background: var(--border-subtle) !important;
+  margin: 0 4px !important;
+}
+
+.ribbon-right {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.ribbon-stock-spec {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  font-size: 10.5px !important;
+  background: var(--off-white) !important;
+  padding: 4px 12px !important;
+  border-radius: var(--radius-pill) !important;
+  border: 1px solid var(--border-subtle) !important;
+}
+
+.spec-alloy {
+  font-weight: 500 !important;
+  color: var(--text-main) !important;
+}
+
+.spec-dim {
+  color: var(--text-dim) !important;
+  font-family: var(--font-mono) !important;
+  font-size: 10px !important;
+}
+
+.aura-swatches-pill-group {
+  display: flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  padding: 3px 6px !important;
+  border-radius: var(--radius-pill) !important;
+  background: var(--off-white) !important;
+  border: 1px solid var(--border-subtle) !important;
+}
+
+.aura-mini-swatch {
+  width: 16px !important;
+  height: 14px !important;
+  border-radius: var(--radius-pill) !important;
+}
+
+.swatch-lime {
+  background-color: var(--lime-card) !important;
+}
+
+.swatch-lavender {
+  background-color: var(--lavender) !important;
+}
+
+.ribbon-btn.icon-only {
+  width: 32px !important;
+  height: 32px !important;
+  padding: 0 !important;
+  justify-content: center !important;
+  border-radius: var(--radius-pill) !important;
+}
+
+/* ==========================================================================
+   2. MAIN 3-COLUMN BENTO WORKSPACE
+   ========================================================================== */
+.studio-workspace {
+  flex: 1 !important;
+  display: grid !important;
+  grid-template-columns: 280px 1fr 310px !important;
+  gap: 12px !important;
+  overflow: hidden !important;
+  position: relative !important;
+  min-height: 0 !important;
+  background: transparent !important;
+}
+
+/* ==========================================================================
+   LEFT BENTO CARD: CAM BROWSER / FEATURE TREE
+   ========================================================================== */
+.engineering-browser {
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  background: var(--bg-board) !important;
+  border-radius: var(--radius-card) !important;
+  box-shadow: var(--shadow-card) !important;
+  border: 1px solid var(--border-card) !important;
+  padding: 14px 12px !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: none !important;
+}
+
+.browser-header {
+  height: 32px !important;
+  min-height: 32px !important;
+  background: transparent !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 0 4px 6px 4px !important;
+  border-bottom: 1px solid var(--border-subtle) !important;
+  margin-bottom: 6px !important;
+}
+
+.browser-title-text {
+  font-family: var(--font-sans) !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  letter-spacing: -0.01em !important;
+  color: var(--text-main) !important;
+  text-transform: lowercase !important;
+}
+
+.add-op-dropdown-container {
+  position: relative !important;
+}
+
+.btn-browser-icon {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  height: 24px !important;
+  padding: 0 10px !important;
+  border-radius: var(--radius-pill) !important;
+  border: 1px solid var(--border-subtle) !important;
+  background: var(--lime-card) !important;
+  color: #111111 !important;
+  font-family: var(--font-sans) !important;
+  font-size: 10.5px !important;
+  font-weight: 400 !important;
+  cursor: pointer !important;
+  transition: all 0.12s ease !important;
+}
+
+.btn-browser-icon:hover {
+  background: var(--lime-hover) !important;
+}
+
+.browser-dropdown-menu {
+  position: absolute !important;
+  top: 100% !important;
+  right: 0 !important;
+  margin-top: 4px !important;
+  background: var(--bg-board) !important;
+  border: 1px solid var(--border-subtle) !important;
+  border-radius: var(--radius-inner) !important;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.08) !important;
+  padding: 6px !important;
+  min-width: 180px !important;
+  z-index: 50 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 2px !important;
+}
+
+.browser-dropdown-menu button {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 6px 10px !important;
+  border-radius: var(--radius-pill) !important;
+  background: transparent !important;
+  border: none !important;
+  font-family: var(--font-sans) !important;
+  font-size: 11px !important;
+  color: var(--text-main) !important;
+  cursor: pointer !important;
+  text-align: left !important;
+  transition: background 0.1s ease !important;
+}
+
+.browser-dropdown-menu button:hover {
+  background: var(--lime-card) !important;
+  color: #111111 !important;
+}
+
+.browser-tree-view {
+  flex: 1 !important;
+  overflow-y: auto !important;
+  padding: 4px 0 !important;
+}
+
+.tree-branch-group {
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.tree-row {
+  height: 28px !important;
+  min-height: 28px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 0 8px !important;
+  border-radius: 10px !important;
+  margin-bottom: 2px !important;
+  cursor: pointer !important;
+  font-size: 11px !important;
+  color: var(--text-sub) !important;
+  position: relative !important;
+  border-left: none !important;
+  transition: all 0.12s ease !important;
+}
+
+.tree-row:hover:not(.is-selected) {
+  background: var(--off-white) !important;
+  color: var(--text-main) !important;
+}
+
+.tree-row.is-selected {
+  background: var(--lavender) !important;
+  color: #111111 !important;
+  font-weight: 500 !important;
+}
+
+.tree-level-0 {
+  padding-left: 6px !important;
+  font-weight: 500 !important;
+  color: var(--text-main) !important;
+}
+
+.tree-level-1 {
+  padding-left: 18px !important;
+}
+
+.tree-level-2 {
+  padding-left: 28px !important;
+}
+
+.tree-twisty {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  width: 14px !important;
+  height: 14px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--text-dim) !important;
+  cursor: pointer !important;
+}
+
+.tree-node-icon {
+  flex-shrink: 0 !important;
+  color: var(--text-dim) !important;
+}
+
+.tree-node-icon.icon-setup { color: #d97706 !important; }
+.tree-node-icon.icon-stock { color: #2563eb !important; }
+.tree-node-icon.icon-part { color: #9333ea !important; }
+.tree-node-icon.icon-tool { color: #059669 !important; }
+.tree-node-icon.icon-ops { color: #475569 !important; }
+
+.tree-text-primary {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  flex: 1 !important;
+}
+
+.tree-text-dim {
+  color: var(--text-dim) !important;
+  font-size: 9.5px !important;
+  margin-left: 4px !important;
+}
+
+.tree-row.is-selected .tree-text-dim {
+  color: rgba(0, 0, 0, 0.65) !important;
+}
+
+.tree-text-count {
+  font-size: 9.5px !important;
+  color: var(--text-dim) !important;
+}
+
+.tree-tag-datum, .tree-tag-alloy {
+  font-size: 9px !important;
+  padding: 2px 7px !important;
+  border-radius: var(--radius-pill) !important;
+  background: var(--off-white) !important;
+  border: 1px solid var(--border-subtle) !important;
+  color: var(--text-sub) !important;
+}
+
+.tree-row.is-selected .tree-tag-datum,
+.tree-row.is-selected .tree-tag-alloy {
+  background: rgba(255, 255, 255, 0.7) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  color: #111111 !important;
+}
+
+.tree-tag-regen {
+  font-size: 9px !important;
+  padding: 2px 7px !important;
+  border-radius: var(--radius-pill) !important;
+  background: rgba(234, 179, 8, 0.2) !important;
+  color: #a16207 !important;
+  font-weight: 500 !important;
+}
+
+.tree-tool-callout {
+  font-size: 9px !important;
+  color: var(--text-dim) !important;
+  background: var(--off-white) !important;
+  padding: 1px 5px !important;
+  border-radius: var(--radius-pill) !important;
+}
+
+.tree-op-details {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 6px !important;
+  flex: 1 !important;
+  min-width: 0 !important;
+}
+
+.tree-op-label {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  flex: 1 !important;
+  min-width: 0 !important;
+}
+
+.tree-op-depth {
+  font-size: 9.5px !important;
+  color: var(--text-dim) !important;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+  margin-left: 4px !important;
+}
+
+.tree-row.is-selected .tree-op-depth {
+  color: rgba(0, 0, 0, 0.65) !important;
+}
+
+.tree-op-row.is-suppressed {
+  opacity: 0.45 !important;
+}
+
+.tree-op-row.is-active-cutting {
+  background: var(--lime-card) !important;
+  color: #111111 !important;
+  font-weight: 500 !important;
+}
+
+.btn-tree-visibility {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  width: 16px !important;
+  height: 16px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--text-sub) !important;
+  cursor: pointer !important;
+}
+
+.btn-tree-visibility .is-hidden {
+  color: var(--text-dim) !important;
+}
+
+.btn-tree-delete {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  width: 16px !important;
+  height: 16px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--text-dim) !important;
+  cursor: pointer !important;
+  opacity: 0 !important;
+}
+
+.tree-op-row:hover .btn-tree-delete {
+  opacity: 1 !important;
+}
+
+.btn-tree-delete:hover {
+  color: #ef4444 !important;
+}
+
+.tree-tag-active {
+  font-size: 9px !important;
+  font-weight: 600 !important;
+  color: #166534 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 3px !important;
+  background: rgba(34, 197, 94, 0.2) !important;
+  padding: 1px 6px !important;
+  border-radius: var(--radius-pill) !important;
+}
+
+.tree-tag-suppressed {
+  font-size: 9px !important;
+  color: var(--text-dim) !important;
+  background: var(--off-white) !important;
+  padding: 1px 5px !important;
+  border-radius: var(--radius-pill) !important;
+}
+
+.tree-empty-hint {
+  padding: 16px 12px !important;
+  font-size: 11px !important;
+  color: var(--text-dim) !important;
+  line-height: 1.5 !important;
+  text-align: center !important;
+}
+
+/* ==========================================================================
+   CENTER BENTO CARD: 3D VIEWPORT CONTAINER
+   ========================================================================== */
+.cad-viewport-container {
+  height: 100% !important;
+  position: relative !important;
+  overflow: hidden !important;
+  background: var(--bg-board) !important;
+  border-radius: var(--radius-card) !important;
+  box-shadow: var(--shadow-card) !important;
+  border: 1px solid var(--border-card) !important;
+  padding: 10px !important;
+  box-sizing: border-box !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.viewport-canvas {
+  width: 100% !important;
+  height: 100% !important;
+  position: relative !important;
+  border-radius: var(--radius-inner) !important;
+  overflow: hidden !important;
+  background: #151619 !important;
+}
+
+.cad-view-cube-strip {
+  position: absolute !important;
+  top: 20px !important;
+  right: 20px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 3px !important;
+  background: rgba(255, 255, 255, 0.94) !important;
+  backdrop-filter: blur(10px) !important;
+  padding: 4px 6px !important;
+  border-radius: var(--radius-pill) !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05) !important;
+  border: 1px solid rgba(0, 0, 0, 0.06) !important;
+  z-index: 20 !important;
+}
+
+[data-theme="dark"] .cad-view-cube-strip {
+  background: rgba(28, 29, 34, 0.92) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.cad-view-cube-strip button {
+  background: transparent !important;
+  border: none !important;
+  font-family: var(--font-sans) !important;
+  font-size: 10px !important;
+  font-weight: 500 !important;
+  color: #333333 !important;
+  padding: 3px 8px !important;
+  border-radius: var(--radius-pill) !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 3px !important;
+  transition: all 0.12s ease !important;
+}
+
+[data-theme="dark"] .cad-view-cube-strip button {
+  color: #dcdcdc !important;
+}
+
+.cad-view-cube-strip button:hover {
+  background: var(--lime-card) !important;
+  color: #111111 !important;
+}
+
+.cad-viewport-toolbar {
+  position: absolute !important;
+  bottom: 20px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  background: rgba(255, 255, 255, 0.95) !important;
+  backdrop-filter: blur(10px) !important;
+  padding: 4px 10px !important;
+  border-radius: var(--radius-pill) !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08) !important;
+  border: 1px solid rgba(0, 0, 0, 0.06) !important;
+  z-index: 20 !important;
+}
+
+[data-theme="dark"] .cad-viewport-toolbar {
+  background: rgba(28, 29, 34, 0.92) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.vp-tool-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  height: 26px !important;
+  padding: 0 10px !important;
+  border-radius: var(--radius-pill) !important;
+  border: none !important;
+  background: transparent !important;
+  color: #444444 !important;
+  font-family: var(--font-sans) !important;
+  font-size: 10.5px !important;
+  cursor: pointer !important;
+  transition: all 0.12s ease !important;
+}
+
+[data-theme="dark"] .vp-tool-btn {
+  color: #c5c8d2 !important;
+}
+
+.vp-tool-btn:hover {
+  background: var(--off-white) !important;
+  color: #111111 !important;
+}
+
+.vp-tool-btn.is-active {
+  background: var(--lavender) !important;
+  color: #111111 !important;
+  font-weight: 500 !important;
+}
+
+[data-theme="dark"] .vp-tool-btn.is-active {
+  background: var(--lavender) !important;
+  color: #ffffff !important;
+}
+
+.explode-slider-group {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 0 6px !important;
+}
+
+.explode-label {
+  font-size: 10px !important;
+  color: var(--text-dim) !important;
+}
+
+.explode-slider {
+  width: 55px !important;
+  height: 4px !important;
+  cursor: pointer !important;
+  accent-color: var(--lavender) !important;
+}
+
+.explode-val {
+  font-size: 10px !important;
+  color: var(--text-sub) !important;
+  min-width: 24px !important;
+}
+
+.cad-axis-indicator {
+  position: absolute !important;
+  bottom: 22px !important;
+  left: 24px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  font-family: var(--font-mono) !important;
+  background: rgba(255, 255, 255, 0.88) !important;
+  backdrop-filter: blur(8px) !important;
+  padding: 3px 8px !important;
+  border-radius: var(--radius-pill) !important;
+  border: 1px solid rgba(0, 0, 0, 0.06) !important;
+  z-index: 10 !important;
+}
+
+[data-theme="dark"] .cad-axis-indicator {
+  background: rgba(24, 25, 28, 0.7) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.axis-label.axis-x { color: #ef4444 !important; }
+.axis-label.axis-y { color: #16a34a !important; }
+.axis-label.axis-z { color: #2563eb !important; }
+
+/* ==========================================================================
+   RIGHT BENTO CARD: CONTEXTUAL PROPERTY INSPECTOR
+   ========================================================================== */
+.engineering-inspector {
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  background: var(--bg-board) !important;
+  border-radius: var(--radius-card) !important;
+  box-shadow: var(--shadow-card) !important;
+  border: 1px solid var(--border-card) !important;
+  padding: 14px 12px !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: none !important;
+}
+
+.inspector-panel-inner {
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100% !important;
+  overflow: hidden !important;
+}
+
+.inspector-panel-header {
+  height: 32px !important;
+  min-height: 32px !important;
+  background: transparent !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 0 4px 6px 4px !important;
+  border-bottom: 1px solid var(--border-subtle) !important;
+  margin-bottom: 8px !important;
+}
+
+.panel-title-row {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.panel-title-glyph {
+  color: var(--text-lavender) !important;
+}
+
+.panel-title-text {
+  font-family: var(--font-sans) !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  color: var(--text-main) !important;
+  letter-spacing: -0.01em !important;
+}
+
+.panel-context-badge {
+  font-size: 9.5px !important;
+  color: var(--text-dim) !important;
+}
+
+.eng-checkbox-label {
+  display: flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  font-size: 10.5px !important;
+  color: var(--text-sub) !important;
+  background: var(--lime-card) !important;
+  padding: 2px 8px !important;
+  border-radius: var(--radius-pill) !important;
+  cursor: pointer !important;
+}
+
+.inspector-panel-content {
+  flex: 1 !important;
+  overflow-y: auto !important;
+  padding: 2px 4px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important;
+}
+
+.prop-group {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+  border-bottom: 1px solid var(--border-subtle) !important;
+  padding-bottom: 10px !important;
+}
+
+.prop-group:last-child {
+  border-bottom: none !important;
+}
+
+.prop-group-title {
+  font-family: var(--font-sans) !important;
+  font-size: 10.5px !important;
+  font-weight: 500 !important;
+  text-transform: lowercase !important;
+  color: var(--text-dim) !important;
+  letter-spacing: -0.01em !important;
+  margin-bottom: 2px !important;
+}
+
+.prop-field-block {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 4px !important;
+  margin-bottom: 4px !important;
+}
+
+.prop-text-input {
+  width: 100% !important;
+  height: 28px !important;
+  padding: 0 10px !important;
+  border-radius: var(--radius-input) !important;
+  border: 1px solid var(--border-subtle) !important;
+  background: var(--off-white) !important;
+  color: var(--text-main) !important;
+  font-family: var(--font-sans) !important;
+  font-size: 11px !important;
+  box-sizing: border-box !important;
+  transition: all 0.12s ease !important;
+}
+
+.prop-text-input:focus {
+  outline: none !important;
+  border-color: var(--border-focus) !important;
+  box-shadow: 0 0 0 2px rgba(216, 201, 254, 0.4) !important;
+}
+
+.prop-row {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  min-height: 26px !important;
+  gap: 8px !important;
+}
+
+.prop-label {
+  font-size: 11px !important;
+  color: var(--text-sub) !important;
+  flex: 1 !important;
+  min-width: 0 !important;
+}
+
+.prop-input-wrap {
+  position: relative !important;
+  display: flex !important;
+  align-items: center !important;
+  width: 115px !important;
+}
+
+.prop-input {
+  width: 100% !important;
+  height: 26px !important;
+  padding: 0 24px 0 8px !important;
+  border-radius: var(--radius-input) !important;
+  border: 1px solid var(--border-subtle) !important;
+  background: var(--off-white) !important;
+  color: var(--text-main) !important;
+  font-size: 11px !important;
+  box-sizing: border-box !important;
+  transition: all 0.12s ease !important;
+}
+
+.prop-input:focus {
+  outline: none !important;
+  border-color: var(--border-focus) !important;
+  box-shadow: 0 0 0 2px rgba(216, 201, 254, 0.4) !important;
+}
+
+.prop-unit {
+  position: absolute !important;
+  right: 8px !important;
+  font-size: 9.5px !important;
+  color: var(--text-dim) !important;
+  pointer-events: none !important;
+}
+
+.prop-select {
+  height: 26px !important;
+  padding: 0 8px !important;
+  border-radius: var(--radius-input) !important;
+  border: 1px solid var(--border-subtle) !important;
+  background: var(--off-white) !important;
+  color: var(--text-main) !important;
+  font-family: var(--font-sans) !important;
+  font-size: 11px !important;
+  max-width: 160px !important;
+  transition: all 0.12s ease !important;
+}
+
+.prop-select:focus {
+  outline: none !important;
+  border-color: var(--border-focus) !important;
+}
+
+.prop-readonly-val {
+  font-size: 11px !important;
+  color: var(--text-main) !important;
+  background: var(--off-white) !important;
+  padding: 2px 8px !important;
+  border-radius: var(--radius-pill) !important;
+}
+
+.prop-data-row {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  font-size: 10.5px !important;
+  padding: 2px 0 !important;
+}
+
+.data-key {
+  color: var(--text-dim) !important;
+}
+
+.data-val {
+  color: var(--text-main) !important;
+}
+
+.prop-action-row {
+  margin-top: 6px !important;
+}
+
+.btn-eng-primary {
+  width: 100% !important;
+  height: 32px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  border-radius: var(--radius-pill) !important;
+  border: 1px solid rgba(0, 0, 0, 0.04) !important;
+  background: var(--lavender) !important;
+  color: #111111 !important;
+  font-family: var(--font-sans) !important;
+  font-size: 11.5px !important;
+  font-weight: 500 !important;
+  cursor: pointer !important;
+  transition: all 0.14s ease !important;
+  box-shadow: 0 4px 14px var(--lavender-shadow) !important;
+}
+
+.btn-eng-primary:hover:not(:disabled) {
+  background: var(--lavender-hover) !important;
+  transform: translateY(-0.5px) !important;
+}
+
+.btn-eng-secondary {
+  width: 100% !important;
+  height: 28px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  border-radius: var(--radius-pill) !important;
+  border: 1px solid var(--border-subtle) !important;
+  background: var(--off-white) !important;
+  color: var(--text-main) !important;
+  font-family: var(--font-sans) !important;
+  font-size: 11px !important;
+  cursor: pointer !important;
+  transition: all 0.12s ease !important;
+}
+
+.btn-eng-secondary:hover:not(:disabled) {
+  background: var(--off-white-hover) !important;
+}
+
+/* ==========================================================================
+   3. BOTTOM BENTO CARD: SIMULATION TIMELINE BAR
+   ========================================================================== */
+.cad-simulation-bar {
+  height: 52px !important;
+  min-height: 52px !important;
+  background: var(--bg-board) !important;
+  border-radius: var(--radius-card) !important;
+  box-shadow: var(--shadow-card) !important;
+  border: 1px solid var(--border-card) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 0 16px !important;
+  gap: 16px !important;
+  z-index: 30 !important;
+  box-sizing: border-box !important;
+}
+
+.sim-transport-group {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.sim-transport-btn {
+  width: 28px !important;
+  height: 28px !important;
+  border-radius: var(--radius-pill) !important;
+  border: 1px solid var(--border-subtle) !important;
+  background: var(--off-white) !important;
+  color: var(--text-main) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  transition: all 0.12s ease !important;
+}
+
+.sim-transport-btn:hover {
+  background: var(--off-white-hover) !important;
+}
+
+.sim-transport-btn.is-play {
+  width: 34px !important;
+  height: 34px !important;
+  background: var(--lime-card) !important;
+  border-color: rgba(0, 0, 0, 0.04) !important;
+  color: #111111 !important;
+  box-shadow: 0 4px 12px var(--lime-shadow) !important;
+}
+
+.sim-transport-btn.is-play:hover {
+  background: var(--lime-hover) !important;
+  transform: translateY(-0.5px) !important;
+}
+
+.sim-transport-btn.is-play.is-running {
+  background: var(--lavender) !important;
+  box-shadow: 0 4px 12px var(--lavender-shadow) !important;
+}
+
+.sim-speed-strip {
+  display: flex !important;
+  align-items: center !important;
+  background: var(--off-white) !important;
+  border-radius: var(--radius-pill) !important;
+  padding: 2px 3px !important;
+  border: 1px solid var(--border-subtle) !important;
+}
+
+.sim-speed-btn {
+  background: transparent !important;
+  border: none !important;
+  font-family: var(--font-sans) !important;
+  font-size: 10px !important;
+  padding: 3px 7px !important;
+  border-radius: var(--radius-pill) !important;
+  color: var(--text-dim) !important;
+  cursor: pointer !important;
+  transition: all 0.1s ease !important;
+}
+
+.sim-speed-btn.is-active {
+  background: var(--bg-board) !important;
+  color: var(--text-main) !important;
+  font-weight: 500 !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04) !important;
+}
+
+.sim-bar-divider {
+  width: 1px !important;
+  height: 18px !important;
+  background: var(--border-subtle) !important;
+}
+
+.sim-active-op {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  font-size: 11px !important;
+  color: var(--text-sub) !important;
+}
+
+.op-bullet {
+  width: 6px !important;
+  height: 6px !important;
+  border-radius: 50% !important;
+  background: var(--text-lime) !important;
+}
+
+.sim-timeline-group {
+  flex: 1 !important;
+  max-width: 460px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+}
+
+.sim-time-tag {
+  font-size: 11px !important;
+  color: var(--text-sub) !important;
+}
+
+.sim-total-time {
+  color: var(--text-dim) !important;
+}
+
+.sim-scrubber-track {
+  flex: 1 !important;
+  height: 8px !important;
+  background: var(--off-white) !important;
+  border-radius: var(--radius-pill) !important;
+  position: relative !important;
+  overflow: hidden !important;
+  border: 1px solid var(--border-subtle) !important;
+}
+
+.sim-scrubber-slider {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  opacity: 0 !important;
+  cursor: pointer !important;
+  z-index: 2 !important;
+  margin: 0 !important;
+}
+
+.sim-scrubber-fill {
+  height: 100% !important;
+  background: var(--lavender) !important;
+  border-radius: var(--radius-pill) !important;
+  pointer-events: none !important;
+  z-index: 1 !important;
+}
+
+.sim-dro-group {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+}
+
+.dro-axis-readout {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  font-size: 11px !important;
+  background: var(--off-white) !important;
+  padding: 4px 12px !important;
+  border-radius: var(--radius-pill) !important;
+  border: 1px solid var(--border-subtle) !important;
+}
+
+.dro-axis {
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  color: var(--text-main) !important;
+}
+
+.dro-axis b {
+  font-size: 10px !important;
+}
+
+.dro-axis b.axis-x { color: #ef4444 !important; }
+.dro-axis b.axis-y { color: #16a34a !important; }
+.dro-axis b.axis-z { color: #2563eb !important; }
+
+.dro-telemetry-readout {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  font-size: 10.5px !important;
+  color: var(--text-sub) !important;
+}
+
+.dro-telemetry-readout small {
+  color: var(--text-dim) !important;
+}
+
+.dro-alarm-tag {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 3px !important;
+  padding: 2px 7px !important;
+  border-radius: var(--radius-pill) !important;
+  background: rgba(239, 68, 68, 0.15) !important;
+  color: #ef4444 !important;
+  font-size: 9px !important;
+  font-weight: 600 !important;
+}

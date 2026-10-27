@@ -1,8 +1,6 @@
 import React from 'react';
 import { 
-  Play, Pause, RotateCcw, Clock, Gauge, 
-  Activity, AlertTriangle, Layers, ChevronRight,
-  FastForward, Scissors
+  Play, Pause, RotateCcw, Clock, AlertTriangle
 } from 'lucide-react';
 
 export default function SimulationTimeline({
@@ -54,15 +52,56 @@ export default function SimulationTimeline({
   };
 
   return (
-    <footer className="simulation-timeline" role="region" aria-label="Simulation Playback Timeline">
-      {/* Top Scrubber & Progress Strip */}
-      <div className="timeline-scrubber-row">
-        <div className="time-display time-elapsed mono">
-          <Clock size={12} className="time-icon" />
-          <span>{formatTime(elapsedTimeSec)}</span>
+    <footer className="cad-simulation-bar" role="region" aria-label="Simulation Player">
+      {/* Left: Standard Transport Controls */}
+      <div className="sim-transport-group">
+        <button
+          type="button"
+          className="sim-transport-btn"
+          onClick={onReset}
+          title="Reset to Start"
+          aria-label="Reset simulation"
+        >
+          <RotateCcw size={12} />
+        </button>
+
+        <button
+          type="button"
+          className={`sim-transport-btn is-play ${isRunning ? 'is-running' : ''}`}
+          onClick={handleTogglePlay}
+          title={isRunning ? "Feed Hold (Pause)" : "Simulate"}
+          aria-label={isRunning ? "Pause" : "Play"}
+        >
+          {isRunning ? <Pause size={12} fill="currentColor" /> : <Play size={12} fill="currentColor" />}
+        </button>
+
+        {/* Speed Selector */}
+        <div className="sim-speed-strip" role="group" aria-label="Playback speed">
+          {speeds.map(sp => (
+            <button
+              key={sp}
+              type="button"
+              className={`sim-speed-btn ${speed === sp ? 'is-active' : ''}`}
+              onClick={() => onSetSpeed(sp)}
+            >
+              {sp}x
+            </button>
+          ))}
         </div>
 
-        <div className="scrubber-track-container">
+        <div className="sim-bar-divider" />
+
+        {/* Current Operation Text */}
+        <div className="sim-active-op mono" title="Current Executing Operation">
+          <span className="op-bullet" />
+          <span className="op-text">{currentOperation || (simState === 'complete' ? 'Cycle Complete' : 'Ready')}</span>
+        </div>
+      </div>
+
+      {/* Center: Timeline Scrubber & Elapsed Time */}
+      <div className="sim-timeline-group">
+        <span className="sim-time-tag mono">{formatTime(elapsedTimeSec)}</span>
+        <div className="sim-scrubber-track">
           <input
             type="range"
             min="0"
@@ -70,118 +109,43 @@ export default function SimulationTimeline({
             step="0.1"
             value={progressPercent}
             onChange={handleSliderChange}
-            className="timeline-slider"
-            aria-label="Simulation progress scrub"
+            className="sim-scrubber-slider"
+            aria-label="Simulation timeline scrub"
           />
           <div 
-            className="timeline-fill"
+            className="sim-scrubber-fill"
             style={{ width: `${Math.min(100, Math.max(0, progressPercent))}%` }}
           />
         </div>
-
-        <div className="time-display time-total mono">
-          <span>{estimatedTimeSec > 0 ? formatTime(estimatedTimeSec) : '--:--'}</span>
-        </div>
+        <span className="sim-time-tag mono sim-total-time">
+          {estimatedTimeSec > 0 ? formatTime(estimatedTimeSec) : '--:--'}
+        </span>
       </div>
 
-      {/* Main Controls & Live Telemetry Strip */}
-      <div className="timeline-controls-row">
-        {/* Playback Controls Left */}
-        <div className="controls-left">
-          <button
-            type="button"
-            className={`btn-play-pause ${isRunning ? 'is-running' : ''}`}
-            onClick={handleTogglePlay}
-            title={isRunning ? "Pause simulation (Feed Hold)" : "Start simulation"}
-            aria-label={isRunning ? "Pause" : "Play"}
-          >
-            {isRunning ? (
-              <Pause size={16} fill="currentColor" />
-            ) : (
-              <Play size={16} fill="currentColor" style={{ marginLeft: '2px' }} />
-            )}
-          </button>
-
-          <button
-            type="button"
-            className="btn-timeline-action"
-            onClick={onReset}
-            title="Reset simulation to beginning and clear cuts"
-            aria-label="Reset simulation"
-          >
-            <RotateCcw size={15} />
-          </button>
-
-          {/* Speed Selector */}
-          <div className="speed-selector" role="group" aria-label="Playback speed">
-            {speeds.map(sp => (
-              <button
-                key={sp}
-                type="button"
-                className={`btn-speed ${speed === sp ? 'is-selected' : ''}`}
-                onClick={() => onSetSpeed(sp)}
-              >
-                {sp}x
-              </button>
-            ))}
-          </div>
-
-          <div className="v-divider" />
-
-          {/* Current Operation Name */}
-          <div className="current-op-badge" title="Active Machining Operation">
-            <Layers size={13} className="op-icon" />
-            <span className="op-label">
-              {currentOperation || (simState === 'complete' ? 'Machining Complete' : 'Idle / Standby')}
-            </span>
-          </div>
+      {/* Right: Technical DRO & Spindle Readout */}
+      <div className="sim-dro-group">
+        {/* Coordinates */}
+        <div className="dro-axis-readout mono">
+          <span className="dro-axis"><b className="axis-x">X</b> {formatCoord(dro?.x)}</span>
+          <span className="dro-axis"><b className="axis-y">Y</b> {formatCoord(dro?.y)}</span>
+          <span className="dro-axis"><b className="axis-z">Z</b> {formatCoord(dro?.z ?? 25)}</span>
         </div>
 
-        {/* Live Metrics & DRO Right */}
-        <div className="controls-right">
-          {/* Live Cutting DRO */}
-          <div className="dro-pill-group">
-            <div className="dro-coordinate">
-              <span className="coord-axis axis-x">X</span>
-              <span className="coord-val mono">{formatCoord(dro?.x)}</span>
-            </div>
-            <div className="dro-coordinate">
-              <span className="coord-axis axis-y">Y</span>
-              <span className="coord-val mono">{formatCoord(dro?.y)}</span>
-            </div>
-            <div className="dro-coordinate">
-              <span className="coord-axis axis-z">Z</span>
-              <span className="coord-val mono">{formatCoord(dro?.z ?? 25)}</span>
-            </div>
-          </div>
+        <div className="sim-bar-divider" />
 
-          {/* Spindle & Feed Indicators */}
-          <div className="telemetry-compact-pill">
-            <span className="metric-tag">
-              <Gauge size={12} />
-              <span className="mono">{isRunning ? (Number(dro?.spindleRPM) || 8000) : 0}</span>
-              <small>RPM</small>
-            </span>
-            <span className="metric-tag">
-              <Activity size={12} />
-              <span className="mono">{(Number(dro?.feedRate) || 800).toFixed(0)}</span>
-              <small>mm/m</small>
-            </span>
-            <span className="metric-tag">
-              <Scissors size={12} />
-              <span className="mono">{Math.round(removedPercent)}%</span>
-              <small>Cut</small>
-            </span>
-          </div>
-
-          {/* Limit Alarm Warning Pill if tripped */}
-          {dro?.limitsExceeded && (
-            <div className="alarm-pill" title="Axis soft limit exceeded!">
-              <AlertTriangle size={13} />
-              <span>Limit Alarm</span>
-            </div>
-          )}
+        {/* Feed & Speed */}
+        <div className="dro-telemetry-readout mono">
+          <span>{isRunning ? (Number(dro?.spindleRPM) || 8000) : 0} <small>RPM</small></span>
+          <span>{(Number(dro?.feedRate) || 800).toFixed(0)} <small>mm/m</small></span>
+          <span>{Math.round(removedPercent)}% <small>Cut</small></span>
         </div>
+
+        {dro?.limitsExceeded && (
+          <div className="dro-alarm-tag" title="Axis soft limit exceeded">
+            <AlertTriangle size={11} />
+            <span>LIMIT</span>
+          </div>
+        )}
       </div>
     </footer>
   );
