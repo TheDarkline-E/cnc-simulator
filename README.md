@@ -1,6 +1,12 @@
 # Digital CNC Machining Simulator & Production Digital Twin
 
-A production-grade **CNC Machining Digital Twin** built around the user's authentic supplied CAD machine assembly (`main.STEP` / 40 solids).
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Online%20Simulator-brightgreen?style=for-the-badge&logo=githubpages)](https://thedarkline-e.github.io/cnc-simulator/)
+[![GitHub repo](https://img.shields.io/badge/GitHub-Public%20Repository-blue?style=for-the-badge&logo=github)](https://github.com/TheDarkline-E/cnc-simulator)
+
+> 🌐 **Public Live Demo**: Anyone can access and run the digital twin simulator directly in their browser at:  
+> **[https://thedarkline-e.github.io/cnc-simulator/](https://thedarkline-e.github.io/cnc-simulator/)**
+
+A production-grade **CNC Machining Digital Twin** built around the authentic CAD machine assembly (`main.STEP` / 40 solids).
 
 Users can upload their own CAD design files (`.STEP`, `.STP`, `.STL`, `.OBJ`) or custom CNC programs (`.NC`, `.GCODE`, `.TAP`), watch the virtual machine physically execute the operations in real time with high fidelity kinematics, and inspect the machined results visually.
 
