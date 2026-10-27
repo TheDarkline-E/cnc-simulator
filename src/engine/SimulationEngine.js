@@ -141,32 +141,38 @@ export class SimulationEngine {
       return;
     }
 
-    const currentPoint = this.points[this.currentIndex];
-    const nextPoint = this.points[this.currentIndex + 1];
+    // Smooth continuous motion interpolation (fixes jitter/shaking)
+    let remainingTime = dt;
+    while (remainingTime > 0 && this.currentIndex < this.points.length - 1) {
+      const curP = this.points[this.currentIndex];
+      const nxtP = this.points[this.currentIndex + 1];
+      const dist = Math.hypot(
+        nxtP.x - curP.x,
+        nxtP.y - curP.y,
+        nxtP.z - curP.z
+      );
 
-    const dist = Math.hypot(
-      nextPoint.x - currentPoint.x,
-      nextPoint.y - currentPoint.y,
-      nextPoint.z - currentPoint.z
-    );
+      const feed = nxtP.type === 'cut' ? (nxtP.feed || 800) : 2500;
+      const speedMmPerSec = Math.max(10.0, (feed / 60.0) * this.playbackSpeed * 3.0);
+      const segmentDuration = dist > 0 ? (dist / speedMmPerSec) : 0.001;
 
-    // Speed in mm/s: feed is in mm/min
-    const feed = nextPoint.type === 'cut' ? (nextPoint.feed || 800) : 2500;
-    const speedMmPerSec = (feed / 60.0) * this.playbackSpeed * 4.0; // Scaled for visual engagement
-
-    const segmentDuration = dist > 0 ? (dist / speedMmPerSec) : 0.005;
-    this.segmentProgress += dt / segmentDuration;
-    this.elapsedTimeSec += dt;
-
-    if (this.segmentProgress >= 1.0) {
-      this.currentIndex++;
-      this.segmentProgress = 0.0;
+      const timeLeftInSegment = (1.0 - this.segmentProgress) * segmentDuration;
+      if (remainingTime >= timeLeftInSegment) {
+        remainingTime -= timeLeftInSegment;
+        this.currentIndex++;
+        this.segmentProgress = 0.0;
+        this.elapsedTimeSec += timeLeftInSegment;
+      } else {
+        this.segmentProgress += remainingTime / segmentDuration;
+        this.elapsedTimeSec += remainingTime;
+        remainingTime = 0;
+      }
     }
 
-    // Interpolate machine position
+    // Interpolate current machine coordinates smoothly
     const curP = this.points[this.currentIndex];
     const nxtP = this.points[Math.min(this.points.length - 1, this.currentIndex + 1)];
-    const t = Math.min(1.0, this.segmentProgress);
+    const t = Math.max(0.0, Math.min(1.0, this.segmentProgress));
 
     const interpX = curP.x + (nxtP.x - curP.x) * t;
     const interpY = curP.y + (nxtP.y - curP.y) * t;

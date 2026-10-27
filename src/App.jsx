@@ -1,16 +1,11 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { 
-  Play, Pause, Square, RotateCcw, Box, Cpu, 
-  Settings, Layers, CheckCircle2, 
-  Download, Activity, Compass, Info,
-  Sun, Moon, UploadCloud, Disc, Sparkles
-} from 'lucide-react';
-
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import SidebarNav from './components/SidebarNav';
 import CenterViewportCard from './components/CenterViewportCard';
 import RightTelemetryCard from './components/RightTelemetryCard';
+import FigmaPreviewDashboard from './components/FigmaPreviewDashboard';
 import InspectionModal from './components/InspectionModal';
 import MachineSetupModal from './components/MachineSetupModal';
+
 
 import { MachineKinematics } from './engine/MachineKinematics';
 import { MaterialRemovalEngine } from './engine/MaterialRemoval';
@@ -19,7 +14,10 @@ import { CAMEngine } from './engine/CAMEngine';
 import { CADImporter } from './engine/CADImporter';
 
 export default function App() {
-  // Theme state (default to Light mode for high visibility)
+  // Navigation State: 'machining' | 'charts' | 'machine' | 'kinematics'
+  const [activeNav, setActiveNav] = useState('machining');
+
+  // Theme state: defaults to light studio mode as in reference
   const [theme, setTheme] = useState('light');
 
   useEffect(() => {
@@ -83,8 +81,8 @@ export default function App() {
   const [toolpathData, setToolpathData] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
 
-  // Simulation State
-  const [simState, setSimState] = useState('ready'); // 'ready' | 'running' | 'paused' | 'complete'
+  // Simulation State: 'ready' | 'running' | 'paused' | 'complete'
+  const [simState, setSimState] = useState('ready');
   const [progressPercent, setProgressPercent] = useState(0);
   const [elapsedTimeSec, setElapsedTimeSec] = useState(0);
   const [removedPercent, setRemovedPercent] = useState(0);
@@ -93,7 +91,7 @@ export default function App() {
   const [showInspection, setShowInspection] = useState(false);
   const [showSetupModal, setShowSetupModal] = useState(false);
 
-  // Live DRO
+  // Live Digital Readout (DRO)
   const [dro, setDro] = useState({
     x: 0, y: 0, z: 25,
     spindleRPM: 0,
@@ -103,7 +101,7 @@ export default function App() {
     lastError: null
   });
 
-  // Simulation Engine & Viewport API References
+  // Simulation Engine & Viewport References
   const simEngineRef = useRef(null);
   const viewportApiRef = useRef(null);
 
@@ -116,6 +114,27 @@ export default function App() {
       console.warn("CAD stats analysis error:", err);
     });
   }, [userPartFile, cadImporter]);
+
+  // Generate Toolpath using CAMEngine
+  const generateToolpath = useCallback(() => {
+    setIsGenerating(true);
+    setTimeout(() => {
+      const result = camEngine.generateProgram({
+        stock: stockConfig,
+        tool: toolConfig,
+        operations,
+        parameters: machiningParams,
+        cadStats
+      });
+
+      setToolpathData(result.toolpathData);
+      if (simEngineRef.current) {
+        simEngineRef.current.loadToolpath(result.toolpathData);
+      }
+      setIsGenerating(false);
+      setSimState('ready');
+    }, 100);
+  }, [camEngine, stockConfig, toolConfig, operations, machiningParams, cadStats]);
 
   // Initialize Simulation Engine
   useEffect(() => {
@@ -139,48 +158,14 @@ export default function App() {
     sim.setToolConfig(toolConfig);
     simEngineRef.current = sim;
 
-    // Automatically generate initial toolpath for instant readiness
     generateToolpath();
-  }, []);
+  }, [kinematics, materialEngine]);
 
   useEffect(() => {
     if (simEngineRef.current) {
       simEngineRef.current.setToolConfig(toolConfig);
     }
   }, [toolConfig]);
-
-  // Generate Toolpath using CAMEngine
-  const generateToolpath = () => {
-    setIsGenerating(true);
-    setTimeout(() => {
-      const result = camEngine.generateProgram({
-        stock: stockConfig,
-        tool: toolConfig,
-        operations,
-        parameters: machiningParams,
-        cadStats
-      });
-
-      setToolpathData(result.toolpathData);
-      if (simEngineRef.current) {
-        simEngineRef.current.loadToolpath(result.toolpathData);
-      }
-      setIsGenerating(false);
-      setSimState('ready');
-    }, 100);
-  };
-
-  // Auto-fit Stock to CAD Dimensions
-  const handleAutoFitStock = () => {
-    if (cadStats && cadStats.recommendedStock) {
-      setStockConfig({
-        ...stockConfig,
-        width: cadStats.recommendedStock.width,
-        length: cadStats.recommendedStock.length,
-        height: cadStats.recommendedStock.height
-      });
-    }
-  };
 
   // Playback Handlers
   const handleStart = () => {
@@ -190,15 +175,7 @@ export default function App() {
         return;
       }
       if (!toolpathData) {
-        const result = camEngine.generateProgram({
-          stock: stockConfig,
-          tool: toolConfig,
-          operations,
-          parameters: machiningParams,
-          cadStats
-        });
-        setToolpathData(result.toolpathData);
-        simEngineRef.current.loadToolpath(result.toolpathData);
+        generateToolpath();
       }
       simEngineRef.current.start();
     }
@@ -231,33 +208,12 @@ export default function App() {
   };
 
   return (
-    <div style={{
-      width: '100vw',
-      height: '100vh',
-      background: 'var(--bg-desktop)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '16px',
-      overflow: 'hidden',
-      boxSizing: 'border-box'
-    }}>
-      {/* Master Application Rounded Frame matching user reference */}
-      <div style={{
-        width: '100%',
-        maxWidth: '1440px',
-        height: '100%',
-        maxHeight: '940px',
-        background: 'var(--bg-app)',
-        borderRadius: 'var(--radius-app)',
-        boxShadow: 'var(--shadow-app)',
-        display: 'flex',
-        overflow: 'hidden',
-        position: 'relative'
-      }}>
-        {/* Left Column: Sidebar Navigation */}
+    <main className="app-stage">
+      <div className="app-shell">
+        {/* Left Column: Sidebar Navigation & CAM Pipeline */}
         <SidebarNav
-          activeNav="machining"
+          activeNav={activeNav}
+          onSelectNav={(nav) => setActiveNav(nav)}
           stockConfig={stockConfig}
           setStockConfig={setStockConfig}
           operations={operations}
@@ -266,37 +222,72 @@ export default function App() {
           onOpenSetup={() => setShowSetupModal(true)}
         />
 
-        {/* Center Column: Hero 3D Card */}
-        <div style={{ flex: 1, padding: '16px 0', height: '100%', display: 'flex' }}>
-          <CenterViewportCard
-            kinematics={kinematics}
-            materialEngine={materialEngine}
-            toolpathData={toolpathData}
-            stockConfig={stockConfig}
-            toolConfig={toolConfig}
-            userPartFile={userPartFile}
-            simState={simState}
-            theme={theme}
-            onStart={handleStart}
-            onPause={handlePause}
-            onResume={handleResume}
-            onReset={handleReset}
-            progressPercent={progressPercent}
-            viewportApiRef={viewportApiRef}
-          />
-        </div>
+        {activeNav === 'charts' ? (
+          /* Full 6-Card Production Analytics Dashboard from Figma Preview */
+          <div className="dashboard-column" style={{ flex: 1, height: '100%', overflow: 'hidden' }}>
+            <FigmaPreviewDashboard
+              onSwitchPage={(page) => setActiveNav(page === 'studio' ? 'machining' : page)}
+              dro={dro}
+              simState={simState}
+              currentOperation={currentOperation}
+              progressPercent={progressPercent}
+              stockConfig={stockConfig}
+            />
+          </div>
+        ) : (
+          <>
+            {/* Center Column: Hero 3D CAD/CAM Viewport — Permanent Real Digital Twin */}
+            <div className="center-column" style={{ flex: 1, height: '100%', display: 'flex', overflow: 'hidden' }}>
+              <CenterViewportCard
+                kinematics={kinematics}
+                materialEngine={materialEngine}
+                toolpathData={toolpathData}
+                stockConfig={stockConfig}
+                setStockConfig={setStockConfig}
+                toolConfig={toolConfig}
+                setToolConfig={setToolConfig}
+                machiningParams={machiningParams}
+                setMachiningParams={setMachiningParams}
+                onRegenerate={generateToolpath}
+                userPartFile={userPartFile}
+                simState={simState}
+                dro={dro}
+                theme={theme}
+                onStart={handleStart}
+                onPause={handlePause}
+                onResume={handleResume}
+                onReset={handleReset}
+                progressPercent={progressPercent}
+                viewportApiRef={viewportApiRef}
+                activeNav={activeNav}
+                onNavigate={(nav) => setActiveNav(nav)}
+              />
+            </div>
 
-        {/* Right Column: User Profile, Heartrate & Researches Timeline */}
-        <RightTelemetryCard
-          dro={dro}
-          simState={simState}
-          currentOperation={currentOperation}
-          progressPercent={progressPercent}
-          onOpenSettings={() => setShowSetupModal(true)}
-          onOpenInspection={() => setShowInspection(true)}
-          toggleTheme={toggleTheme}
-          theme={theme}
-        />
+            {/* Right Column: Telemetry, Live DRO, Spindle Dynamics & Passes Gantt */}
+            <RightTelemetryCard
+              dro={dro}
+              simState={simState}
+              currentOperation={currentOperation}
+              progressPercent={progressPercent}
+              removedPercent={removedPercent}
+              elapsedTimeSec={elapsedTimeSec}
+              onOpenSettings={() => setShowSetupModal(true)}
+              onOpenInspection={() => setShowInspection(true)}
+              onOpenCharts={() => setActiveNav('charts')}
+              toggleTheme={toggleTheme}
+              theme={theme}
+              onStart={handleStart}
+              onPause={handlePause}
+              onResume={handleResume}
+              onReset={handleReset}
+              speed={speed}
+              onSetSpeed={handleSetSpeed}
+              onSeek={handleSeek}
+              activeNav={activeNav}
+            />
+          </>
+        )}
       </div>
 
       {/* CNC Machine & Tooling Setup Modal */}
@@ -320,6 +311,6 @@ export default function App() {
         stockConfig={stockConfig}
         toolConfig={toolConfig}
       />
-    </div>
+    </main>
   );
 }

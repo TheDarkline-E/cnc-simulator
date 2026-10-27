@@ -86,14 +86,14 @@ export class WorkshopEnvironment {
     // In Eevee / Cycles, realistic metal reflections come from long linear ceiling fixtures
     const lightFixtures = [
       // Main central bay overhead dual rows
-      { x: -8, y: roomSize / 2 - 0.5, z: 0, w: 2.2, l: 28, color: 0xffffff, intensity: isLight ? 9.0 : 7.5 },
-      { x: 8,  y: roomSize / 2 - 0.5, z: 0, w: 2.2, l: 28, color: 0xfff6eb, intensity: isLight ? 8.5 : 7.0 },
+      { x: -8, y: roomSize / 2 - 0.5, z: 0, w: 2.2, l: 28, color: 0xffffff, intensity: isLight ? 4.5 : 3.8 },
+      { x: 8,  y: roomSize / 2 - 0.5, z: 0, w: 2.2, l: 28, color: 0xfff6eb, intensity: isLight ? 4.2 : 3.5 },
       // Side work lighting
-      { x: -18, y: roomSize / 2 - 1.0, z: -6, w: 1.8, l: 18, color: 0xeef4ff, intensity: isLight ? 7.0 : 6.0 },
-      { x: 18,  y: roomSize / 2 - 1.0, z: 6,  w: 1.8, l: 18, color: 0xfffaed, intensity: isLight ? 7.0 : 6.0 },
+      { x: -18, y: roomSize / 2 - 1.0, z: -6, w: 1.8, l: 18, color: 0xeef4ff, intensity: isLight ? 3.5 : 3.0 },
+      { x: 18,  y: roomSize / 2 - 1.0, z: 6,  w: 1.8, l: 18, color: 0xfffaed, intensity: isLight ? 3.5 : 3.0 },
       // Front high-angle fill
-      { x: 0,   y: roomSize / 2 - 1.2, z: 16, w: 24, l: 2.0, color: 0xffffff, intensity: isLight ? 6.5 : 5.5 },
-      { x: 0,   y: roomSize / 2 - 1.2, z: -16, w: 24, l: 2.0, color: 0xe8f0fe, intensity: isLight ? 5.5 : 4.5 }
+      { x: 0,   y: roomSize / 2 - 1.2, z: 16, w: 24, l: 2.0, color: 0xffffff, intensity: isLight ? 3.2 : 2.8 },
+      { x: 0,   y: roomSize / 2 - 1.2, z: -16, w: 24, l: 2.0, color: 0xe8f0fe, intensity: isLight ? 2.8 : 2.4 }
     ];
 
     lightFixtures.forEach(fix => {

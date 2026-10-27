@@ -1,216 +1,113 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   Play, Pause, RotateCcw, Box, Compass, 
   Maximize2, ChevronRight, Sparkles, Layers,
-  Eye, Sliders
+  Eye, Sliders, Cpu, Wrench, Activity, ScanLine,
+  ShieldAlert, Droplets, CheckCircle2
 } from 'lucide-react';
 import Viewport3D from './Viewport3D';
+
+const toolPresets = [
+  { id: 'flat_6', name: 'Flat End Mill Ø6mm', type: 'flat_end_mill', diameter: 6.0, length: 50.0, flutes: 2, desc: 'High-precision slotting & contour' },
+  { id: 'ball_6', name: 'Ball End Mill Ø6mm', type: 'ball_end_mill', diameter: 6.0, length: 50.0, flutes: 2, desc: '3D continuous surface profiling' },
+  { id: 'face_12', name: 'Face Mill Ø12mm', type: 'face_mill', diameter: 12.0, length: 45.0, flutes: 4, desc: 'High-MRR surface planar facing' },
+  { id: 'bull_8', name: 'Bull Nose Ø8mm', type: 'bull_nose', diameter: 8.0, length: 50.0, flutes: 3, desc: 'Radius bottom pocket milling' }
+];
 
 export default function CenterViewportCard({
   kinematics,
   materialEngine,
   toolpathData,
   stockConfig,
+  setStockConfig,
   toolConfig,
+  setToolConfig,
+  machiningParams,
+  setMachiningParams,
+  onRegenerate,
   userPartFile,
   simState,
+  dro,
   theme = 'light',
   onStart,
   onPause,
   onResume,
   onReset,
   progressPercent = 0,
-  viewportApiRef
+  viewportApiRef,
+  activeNav = 'machining',
+  onNavigate
 }) {
-  const [activeCamView, setActiveCamView] = useState('iso'); // 'iso' | 'top' | 'front'
+  const [explodedVal, setExplodedVal] = useState(0);
 
-  const isRunning = simState === 'running';
-
-  const handlePlayToggle = () => {
-    if (isRunning) {
-      if (onPause) onPause();
-    } else {
-      if (simState === 'paused') {
-        if (onResume) onResume();
-      } else {
-        if (onStart) onStart();
+  // Synchronize 3D Camera with Active Engineering Navigation Mode
+  useEffect(() => {
+    if (viewportApiRef?.current?.setCameraView) {
+      if (activeNav === 'machine') {
+        viewportApiRef.current.setCameraView('fit');
+      } else if (activeNav === 'kinematics') {
+        viewportApiRef.current.setCameraView('top');
+      } else if (activeNav === 'tooling') {
+        viewportApiRef.current.setCameraView('part_zoom');
+      } else if (activeNav === 'machining') {
+        viewportApiRef.current.setCameraView('iso');
+      } else if (activeNav === 'telemetry') {
+        viewportApiRef.current.setCameraView('front');
       }
     }
+  }, [activeNav, viewportApiRef]);
+
+  // Interactive Kinematic Jog Handler
+  const handleJog = (axis, delta) => {
+    if (!kinematics) return;
+    const current = kinematics.currentPos;
+    let newX = current.x;
+    let newY = current.y;
+    let newZ = current.z;
+    if (axis === 'x') newX = Math.max(-150, Math.min(150, current.x + delta));
+    if (axis === 'y') newY = Math.max(-100, Math.min(100, current.y + delta));
+    if (axis === 'z') newZ = Math.max(-70, Math.min(50, current.z + delta));
+    kinematics.moveTo(newX, newY, newZ);
   };
 
-  const handleSwitchCam = (view) => {
-    setActiveCamView(view);
-    if (viewportApiRef?.current?.setCameraView) {
-      viewportApiRef.current.setCameraView(view);
+  const handleHomeMachine = () => {
+    if (!kinematics) return;
+    kinematics.moveTo(0, 0, 25);
+  };
+
+  const handleExplodeChange = (val) => {
+    setExplodedVal(val);
+    if (kinematics) kinematics.setExplodedFactor(val);
+  };
+
+  const handleSelectToolPreset = (preset) => {
+    if (setToolConfig) {
+      setToolConfig(prev => ({
+        ...prev,
+        type: preset.type,
+        diameter: preset.diameter,
+        length: preset.length,
+        cuttingLength: preset.diameter * 4,
+        flutes: preset.flutes
+      }));
     }
-  };
-
-  const handleFitView = () => {
-    if (viewportApiRef?.current?.setCameraView) {
-      viewportApiRef.current.setCameraView('fit');
+    if (onRegenerate) {
+      setTimeout(onRegenerate, 60);
     }
-  };
-
-  const handleIsoView = () => {
-    setActiveCamView('iso');
-    if (viewportApiRef?.current?.setCameraView) {
-      viewportApiRef.current.setCameraView('iso');
-    }
-  };
-
-  const handleHomeReset = () => {
-    if (onReset) onReset();
-    setActiveCamView('iso');
-    if (viewportApiRef?.current?.setCameraView) {
-      viewportApiRef.current.setCameraView('iso');
-    }
-  };
-
-  const materialNames = {
-    al6061: 'Aluminium 6061-T6',
-    brass360: 'Brass 360 Free-Cut',
-    steel1018: 'Steel 1018 Cold-Roll'
   };
 
   return (
-    <div style={{
+    <div className="center-workspace" style={{
       flex: 1,
       height: '100%',
-      background: 'var(--bg-card)',
-      borderRadius: '28px',
+      width: '100%',
+      background: 'var(--bg-app)',
       position: 'relative',
       overflow: 'hidden',
       display: 'flex',
-      flexDirection: 'column',
-      boxShadow: 'var(--shadow-card)',
-      border: '1px solid var(--border-light)'
+      flexDirection: 'column'
     }}>
-      {/* Top Header matching reference (Title + Functional Camera View Switcher) */}
-      <div style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        padding: '22px 28px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        zIndex: 10,
-        pointerEvents: 'none'
-      }}>
-        <div style={{ pointerEvents: 'auto' }}>
-          <h2 style={{
-            fontSize: '17px',
-            fontWeight: 800,
-            color: 'var(--text-main)',
-            letterSpacing: '-0.3px',
-            margin: 0,
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
-          }}>
-            Digital Twin Overview
-            <span style={{
-              fontSize: '11px',
-              fontWeight: 600,
-              padding: '2px 8px',
-              borderRadius: 'var(--radius-pill)',
-              background: 'var(--bg-app)',
-              color: 'var(--text-muted)',
-              border: '1px solid var(--border-light)'
-            }}>
-              Haas 3-Axis VMC
-            </span>
-            <button
-              onClick={() => {
-                if (viewportApiRef?.current?.cycleEnclosureMode) {
-                  viewportApiRef.current.cycleEnclosureMode();
-                }
-              }}
-              style={{
-                fontSize: '11px',
-                fontWeight: 600,
-                padding: '3px 10px',
-                borderRadius: 'var(--radius-pill)',
-                background: 'var(--bg-app)',
-                color: 'var(--text-sub)',
-                border: '1px solid var(--border-light)',
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px',
-                boxShadow: '0 2px 6px rgba(0,0,0,0.03)'
-              }}
-              title="Toggle Machine Outer Cabinet (Solid / Tinted Glass / Hidden)"
-            >
-              <Box size={12} color="var(--accent-purple)" /> Cabinet Door
-            </button>
-          </h2>
-        </div>
-
-        {/* Capsule Switcher (Camera Views: Isometric / Top XY / Front XZ) */}
-        <div 
-          className="capsule-switcher" 
-          style={{ 
-            pointerEvents: 'auto',
-            background: 'var(--bg-app)',
-            boxShadow: '0 2px 10px rgba(0,0,0,0.04)',
-            padding: '4px',
-            borderRadius: 'var(--radius-pill)'
-          }}
-        >
-          <button
-            className={activeCamView === 'iso' ? 'active' : ''}
-            onClick={() => handleSwitchCam('iso')}
-            title="Isometric 3D Perspective"
-            style={{
-              padding: '6px 16px',
-              borderRadius: 'var(--radius-pill)',
-              fontSize: '12px',
-              fontWeight: 600,
-              background: activeCamView === 'iso' ? 'var(--accent-purple)' : 'transparent',
-              color: activeCamView === 'iso' ? '#ffffff' : 'var(--text-sub)',
-              boxShadow: activeCamView === 'iso' ? '0 3px 10px rgba(124, 92, 252, 0.3)' : 'none'
-            }}
-          >
-            Isometric
-          </button>
-          <button
-            className={activeCamView === 'top' ? 'active' : ''}
-            onClick={() => handleSwitchCam('top')}
-            title="Top View (XY Machining Plane)"
-            style={{
-              padding: '6px 16px',
-              borderRadius: 'var(--radius-pill)',
-              fontSize: '12px',
-              fontWeight: 600,
-              background: activeCamView === 'top' ? 'var(--accent-purple)' : 'transparent',
-              color: activeCamView === 'top' ? '#ffffff' : 'var(--text-sub)',
-              boxShadow: activeCamView === 'top' ? '0 3px 10px rgba(124, 92, 252, 0.3)' : 'none'
-            }}
-          >
-            Top XY
-          </button>
-          <button
-            className={activeCamView === 'front' ? 'active' : ''}
-            onClick={() => handleSwitchCam('front')}
-            title="Front Elevation View (XZ Plane)"
-            style={{
-              padding: '6px 16px',
-              borderRadius: 'var(--radius-pill)',
-              fontSize: '12px',
-              fontWeight: 600,
-              background: activeCamView === 'front' ? 'var(--accent-purple)' : 'transparent',
-              color: activeCamView === 'front' ? '#ffffff' : 'var(--text-sub)',
-              boxShadow: activeCamView === 'front' ? '0 3px 10px rgba(124, 92, 252, 0.3)' : 'none'
-            }}
-          >
-            Front XZ
-          </button>
-        </div>
-      </div>
-
-      {/* 3D Viewport Simulation Canvas */}
+      {/* Real Three.js 3D CNC CAD/CAM Viewport Canvas */}
       <div style={{ width: '100%', height: '100%', position: 'relative' }}>
         <Viewport3D
           kinematics={kinematics}
@@ -220,159 +117,272 @@ export default function CenterViewportCard({
           userPartFile={userPartFile}
           simState={simState}
           theme={theme}
-          minimalUI={true}
+          minimalUI={false}
           apiRef={viewportApiRef}
         />
       </div>
 
-      {/* Floating Bottom-Left Card matching reference ("Precision Milling Cycle") */}
-      <div style={{
-        position: 'absolute',
-        bottom: '24px',
-        left: '24px',
-        zIndex: 10,
-        background: 'rgba(255, 255, 255, 0.94)',
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
-        borderRadius: '22px',
-        padding: '18px 20px',
-        maxWidth: '220px',
-        boxShadow: '0 16px 36px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04)',
-        border: '1px solid rgba(255, 255, 255, 0.8)'
-      }}>
-        <h3 style={{
-          fontSize: '14px',
-          fontWeight: 700,
-          color: '#14171a',
-          lineHeight: '1.3',
-          marginBottom: '6px',
-          letterSpacing: '-0.2px'
-        }}>
-          Precision Milling Cycle
-        </h3>
+      {/* Mode-Specific Contextual Floating Overlays onto Live 3D Twin */}
 
-        <div style={{
-          fontSize: '11px',
-          color: 'var(--text-sub)',
-          marginBottom: '14px',
-          fontWeight: 500,
-          lineHeight: 1.3
-        }}>
-          {materialNames[stockConfig?.material] || 'Aluminium 6061-T6'} • Carbide Endmill (Ø6mm)
+      {/* 1. KINEMATICS MODE: Interactive Real Axis Jogging Controller */}
+      {activeNav === 'kinematics' && (
+        <div 
+          className="glass-panel" 
+          style={{
+            position: 'absolute',
+            bottom: '24px',
+            right: '24px',
+            zIndex: 10,
+            borderRadius: '16px',
+            padding: '16px 20px',
+            minWidth: '320px',
+            boxShadow: 'var(--shadow-float)'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Cpu size={16} color="var(--accent-purple)" />
+              <strong style={{ fontSize: '12.5px', color: 'var(--text-main)' }}>Live Kinematic Jogging</strong>
+            </div>
+            <button
+              onClick={handleHomeMachine}
+              className="glass-panel"
+              style={{
+                fontSize: '11px',
+                fontWeight: 600,
+                padding: '3px 10px',
+                borderRadius: 'var(--radius-pill)',
+                color: 'var(--accent-purple)'
+              }}
+              title="Return Machine to Safe Home Coordinates (G28 X0 Y0 Z25)"
+            >
+              <RotateCcw size={12} /> G28 Home
+            </button>
+          </div>
+
+          <p style={{ fontSize: '11px', color: 'var(--text-sub)', margin: '0 0 12px 0' }}>
+            Drive Haas VF-2SS linear servo drives directly in the 3D twin:
+          </p>
+
+          {/* X Axis Jog Bar */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', gap: '8px' }}>
+            <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--axis-x)', width: '32px' }}>X:</span>
+            <div style={{ display: 'flex', gap: '4px' }}>
+              <button onClick={() => handleJog('x', -10)} style={{ padding: '4px 8px', borderRadius: '6px', background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>-10</button>
+              <button onClick={() => handleJog('x', -1)} style={{ padding: '4px 8px', borderRadius: '6px', background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>-1</button>
+              <button onClick={() => handleJog('x', +1)} style={{ padding: '4px 8px', borderRadius: '6px', background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>+1</button>
+              <button onClick={() => handleJog('x', +10)} style={{ padding: '4px 8px', borderRadius: '6px', background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>+10</button>
+            </div>
+            <span className="mono" style={{ fontSize: '12px', fontWeight: 650, width: '60px', textAlign: 'right' }}>
+              {(dro?.x ?? 0).toFixed(1)} mm
+            </span>
+          </div>
+
+          {/* Y Axis Jog Bar */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', gap: '8px' }}>
+            <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--axis-y)', width: '32px' }}>Y:</span>
+            <div style={{ display: 'flex', gap: '4px' }}>
+              <button onClick={() => handleJog('y', -10)} style={{ padding: '4px 8px', borderRadius: '6px', background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>-10</button>
+              <button onClick={() => handleJog('y', -1)} style={{ padding: '4px 8px', borderRadius: '6px', background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>-1</button>
+              <button onClick={() => handleJog('y', +1)} style={{ padding: '4px 8px', borderRadius: '6px', background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>+1</button>
+              <button onClick={() => handleJog('y', +10)} style={{ padding: '4px 8px', borderRadius: '6px', background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>+10</button>
+            </div>
+            <span className="mono" style={{ fontSize: '12px', fontWeight: 650, width: '60px', textAlign: 'right' }}>
+              {(dro?.y ?? 0).toFixed(1)} mm
+            </span>
+          </div>
+
+          {/* Z Axis Jog Bar */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+            <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--axis-z)', width: '32px' }}>Z:</span>
+            <div style={{ display: 'flex', gap: '4px' }}>
+              <button onClick={() => handleJog('z', -10)} style={{ padding: '4px 8px', borderRadius: '6px', background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>-10</button>
+              <button onClick={() => handleJog('z', -1)} style={{ padding: '4px 8px', borderRadius: '6px', background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>-1</button>
+              <button onClick={() => handleJog('z', +1)} style={{ padding: '4px 8px', borderRadius: '6px', background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>+1</button>
+              <button onClick={() => handleJog('z', +10)} style={{ padding: '4px 8px', borderRadius: '6px', background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>+10</button>
+            </div>
+            <span className="mono" style={{ fontSize: '12px', fontWeight: 650, width: '60px', textAlign: 'right' }}>
+              {(dro?.z ?? 25).toFixed(1)} mm
+            </span>
+          </div>
         </div>
+      )}
 
-        <button
-          onClick={handlePlayToggle}
-          className="btn-purple-pill"
+      {/* 2. MACHINE TWIN MODE: Subsystem Inspection & Exploded Assembly Controls */}
+      {activeNav === 'machine' && (
+        <div 
+          className="glass-panel" 
           style={{
-            fontSize: '11px',
-            padding: '8px 18px',
-            borderRadius: 'var(--radius-pill)',
-            gap: '6px',
-            cursor: 'pointer'
+            position: 'absolute',
+            bottom: '24px',
+            right: '24px',
+            zIndex: 10,
+            borderRadius: '16px',
+            padding: '16px 20px',
+            minWidth: '320px',
+            boxShadow: 'var(--shadow-float)'
           }}
         >
-          {isRunning ? (
-            <>
-              <Pause size={12} /> Pause cycle
-            </>
-          ) : (
-            <>
-              <Play size={12} fill="white" /> Run Machining
-            </>
-          )}
-        </button>
-      </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Box size={16} color="var(--accent-purple)" />
+              <strong style={{ fontSize: '12.5px', color: 'var(--text-main)' }}>Machine CAD Subsystems</strong>
+            </div>
+            <span style={{ fontSize: '10px', color: 'var(--accent-green)', fontWeight: 700 }}>39 Solids Verified</span>
+          </div>
 
-      {/* Floating Bottom-Right 2x2 Glassy Controls Dock */}
-      <div style={{
-        position: 'absolute',
-        bottom: '24px',
-        right: '24px',
-        zIndex: 10,
-        background: 'rgba(255, 255, 255, 0.90)',
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
-        borderRadius: '20px',
-        padding: '8px',
-        boxShadow: '0 16px 36px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04)',
-        border: '1px solid rgba(255, 255, 255, 0.8)',
-        display: 'grid',
-        gridTemplateColumns: 'repeat(2, 38px)',
-        gridTemplateRows: 'repeat(2, 38px)',
-        gap: '6px'
-      }}>
-        {/* Top-Left: <> Fit Camera */}
-        <button
-          onClick={handleFitView}
-          title="Fit Camera to Model (<>)"
+          <div style={{ marginBottom: '14px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-sub)', marginBottom: '4px' }}>
+              <span>Exploded Assembly:</span>
+              <span className="mono">{Math.round(explodedVal * 100)}%</span>
+            </div>
+            <input 
+              type="range"
+              min="0"
+              max="1"
+              step="0.05"
+              value={explodedVal}
+              onChange={(e) => handleExplodeChange(parseFloat(e.target.value))}
+              style={{ width: '100%', cursor: 'pointer', accentColor: 'var(--accent-purple)' }}
+            />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+            <button
+              onClick={() => {
+                if (viewportApiRef?.current?.cycleEnclosureMode) {
+                  viewportApiRef.current.cycleEnclosureMode();
+                }
+              }}
+              style={{
+                padding: '6px 10px',
+                borderRadius: '8px',
+                background: 'var(--bg-card)',
+                border: '1px solid var(--border-light)',
+                fontSize: '11px',
+                fontWeight: 600,
+                color: 'var(--text-main)'
+              }}
+            >
+              <ShieldAlert size={13} color="var(--accent-blue)" /> Cycle Door
+            </button>
+            <button
+              onClick={() => handleExplodeChange(explodedVal > 0 ? 0 : 0.6)}
+              style={{
+                padding: '6px 10px',
+                borderRadius: '8px',
+                background: 'var(--bg-card)',
+                border: '1px solid var(--border-light)',
+                fontSize: '11px',
+                fontWeight: 600,
+                color: 'var(--text-main)'
+              }}
+            >
+              <Layers size={13} color="var(--accent-purple)" /> {explodedVal > 0 ? 'Assemble' : 'Explode 60%'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 3. TOOLING MODE: Direct Spindle Cutter Quick-Selector */}
+      {activeNav === 'tooling' && (
+        <div 
+          className="glass-panel" 
           style={{
-            borderRadius: '12px',
-            background: 'var(--bg-card)',
-            color: 'var(--text-main)',
-            fontSize: '13px',
-            fontWeight: 700,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            transition: 'background 0.15s ease'
+            position: 'absolute',
+            bottom: '24px',
+            right: '24px',
+            zIndex: 10,
+            borderRadius: '16px',
+            padding: '16px 20px',
+            minWidth: '320px',
+            boxShadow: 'var(--shadow-float)'
           }}
         >
-          &lt;&gt;
-        </button>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Wrench size={16} color="var(--accent-purple)" />
+              <strong style={{ fontSize: '12.5px', color: 'var(--text-main)' }}>Spindle Tooling Selector</strong>
+            </div>
+            <span className="mono" style={{ fontSize: '11px', color: 'var(--accent-purple)', fontWeight: 700 }}>
+              Ø{toolConfig?.diameter ?? 6}mm
+            </span>
+          </div>
 
-        {/* Top-Right: Isometric Cube */}
-        <button
-          onClick={handleIsoView}
-          title="Isometric View Angle"
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {toolPresets.map(preset => {
+              const isSelected = toolConfig?.type === preset.type && Math.abs(toolConfig?.diameter - preset.diameter) < 0.1;
+              return (
+                <button
+                  key={preset.id}
+                  onClick={() => handleSelectToolPreset(preset)}
+                  style={{
+                    padding: '8px 10px',
+                    borderRadius: '8px',
+                    background: isSelected ? 'var(--accent-purple-light)' : 'var(--bg-card)',
+                    border: `1px solid ${isSelected ? 'var(--accent-purple)' : 'var(--border-light)'}`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    textAlign: 'left'
+                  }}
+                >
+                  <div>
+                    <div style={{ fontSize: '11.5px', fontWeight: isSelected ? 700 : 550, color: isSelected ? 'var(--accent-purple)' : 'var(--text-main)' }}>
+                      {preset.name}
+                    </div>
+                    <div style={{ fontSize: '9.5px', color: 'var(--text-sub)' }}>
+                      {preset.desc}
+                    </div>
+                  </div>
+                  {isSelected && <CheckCircle2 size={14} color="var(--accent-purple)" />}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* 4. SENSORS & METROLOGY MODE: Live Metrology Surface Overlay */}
+      {activeNav === 'telemetry' && (
+        <div 
+          className="glass-panel" 
           style={{
-            borderRadius: '12px',
-            background: 'var(--bg-card)',
-            color: 'var(--text-main)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            transition: 'background 0.15s ease'
+            position: 'absolute',
+            bottom: '24px',
+            right: '24px',
+            zIndex: 10,
+            borderRadius: '16px',
+            padding: '16px 20px',
+            minWidth: '300px',
+            boxShadow: 'var(--shadow-float)'
           }}
         >
-          <Box size={16} />
-        </button>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Activity size={16} color="var(--accent-purple)" />
+              <strong style={{ fontSize: '12.5px', color: 'var(--text-main)' }}>Sensors & Metrology</strong>
+            </div>
+            <span style={{ fontSize: '10px', color: 'var(--accent-green)', fontWeight: 700 }}>PBR Live</span>
+          </div>
 
-        {/* Bottom-Left: Home / Reset */}
-        <button
-          onClick={handleHomeReset}
-          title="Home Machine Coordinates & Reset Simulation"
-          style={{
-            borderRadius: '12px',
-            background: 'var(--bg-card)',
-            color: 'var(--text-main)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            transition: 'background 0.15s ease'
-          }}
-        >
-          <RotateCcw size={15} />
-        </button>
+          <div style={{ fontSize: '11px', color: 'var(--text-sub)', marginBottom: '12px' }}>
+            Examine machined surface texture and heat distribution directly on the CAD workpiece:
+          </div>
 
-        {/* Bottom-Right: Play / Pause */}
-        <button
-          onClick={handlePlayToggle}
-          title={isRunning ? "Pause Machining" : "Start Machining Cycle"}
-          style={{
-            borderRadius: '12px',
-            background: isRunning ? 'var(--accent-dark)' : 'var(--accent-purple)',
-            color: '#ffffff',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: isRunning ? 'none' : '0 3px 10px rgba(124, 92, 252, 0.3)',
-            transition: 'all 0.15s ease'
-          }}
-        >
-          {isRunning ? <Pause size={15} /> : <Play size={15} fill="white" />}
-        </button>
-      </div>
+          <button
+            onClick={() => {
+              if (viewportApiRef?.current?.cycleWorkpieceMode) {
+                viewportApiRef.current.cycleWorkpieceMode();
+              }
+            }}
+            className="btn-purple-pill"
+            style={{ width: '100%', padding: '8px 12px', fontSize: '11px', cursor: 'pointer' }}
+          >
+            <Layers size={13} /> Cycle Workpiece View (Solid / Heatmap / Ghost)
+          </button>
+        </div>
+      )}
     </div>
   );
 }

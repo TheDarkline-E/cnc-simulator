@@ -45,8 +45,8 @@ export class MachineKinematics {
     this.limitsExceeded = false;
     this.lastError = null;
 
-    // Operating Modes: 'park' (exact factory CAD rest assembly) or 'work' (active machining / WCS tracking)
-    this.assemblyMode = 'park';
+    // Operating Modes: 'work' (active digital twin machining / WCS tracking) or 'park'
+    this.assemblyMode = 'work';
     this.explodedFactor = 0.0; // 0.0 = 100% solid unbroken assembly, 1.0 = full CAD inspection explosion
 
     // References to Three.js Object3D groups

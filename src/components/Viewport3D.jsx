@@ -69,12 +69,12 @@ export default function Viewport3D({
 
   // Visibility & Display states
   const [showMachine, setShowMachine] = useState(true);
-  const [enclosureMode, setEnclosureMode] = useState('solid'); // 'solid' | 'glass' | 'hide'
+  const [enclosureMode, setEnclosureMode] = useState('glass'); // 'glass' (exact CAD render match) | 'solid' | 'hide'
   const [workpieceMode, setWorkpieceMode] = useState('solid'); // 'solid' | 'heatmap' | 'ghost' | 'partOnly'
   const [showToolpath, setShowToolpath] = useState(true);
   const [modelLoading, setModelLoading] = useState(true);
   const [cadLoading, setCadLoading] = useState(false);
-  const [machineAssemblyMode, setMachineAssemblyMode] = useState('park'); // Default: 'park' (exact factory CAD rest matching user CAD photo)
+  const [machineAssemblyMode, setMachineAssemblyMode] = useState('work'); // Default: 'work' (active digital twin ready to cut)
   const [explodedFactor, setExplodedFactor] = useState(0.0);
 
   // Blender-grade upgrades state
@@ -104,13 +104,12 @@ export default function Viewport3D({
     }
   };
 
-  // Auto-engage active work kinematics when simulation starts, return to park when idle/reset
+  // Maintain active digital twin kinematics (prevents sudden 40cm jump between park and work)
   useEffect(() => {
-    if (simState === 'running' || simState?.isRunning) {
-      setMachineAssemblyMode('work');
-      if (kinematics) kinematics.setAssemblyMode('work');
+    if (kinematics) {
+      kinematics.setAssemblyMode('work');
     }
-  }, [simState]);
+  }, [kinematics]);
 
   // Initialize Three.js Scene, Pipeline, Lighting & Environment
   useEffect(() => {
@@ -120,16 +119,16 @@ export default function Viewport3D({
     const width = container.clientWidth;
     const height = container.clientHeight;
 
-    // 1. Scene & Atmospheric Fog
+    // 1. Scene & Studio Radial Vignette Backdrop
     const scene = new THREE.Scene();
     const isLight = theme === 'light';
-    scene.background = new THREE.Color(isLight ? 0xe2e8f0 : 0x070b12);
-    scene.fog = new THREE.FogExp2(isLight ? 0xe2e8f0 : 0x070b12, 0.00010);
+    const studioBackdropTex = proceduralTextures.getCADStudioBackdropTexture(1024, isLight);
+    scene.background = studioBackdropTex;
     sceneRef.current = scene;
 
-    // 2. Camera
-    const camera = new THREE.PerspectiveCamera(45, width / height, 5, 8000);
-    camera.position.set(480, 360, 580);
+    // 2. Camera: Full Machine Overview framing 850x850x702mm envelope with generous margin matching CAD render
+    const camera = new THREE.PerspectiveCamera(38, width / height, 5, 12000);
+    camera.position.set(1060, 780, 1260);
     cameraRef.current = camera;
 
     // 3. Renderer with ACES Filmic Tone Mapping & High Precision Shadow Maps
@@ -143,7 +142,7 @@ export default function Viewport3D({
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = isLight ? 1.25 : 1.15;
+    renderer.toneMappingExposure = isLight ? 1.05 : 0.95;
     container.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
@@ -162,7 +161,7 @@ export default function Viewport3D({
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.06;
-    controls.target.set(10, -220, -100);
+    controls.target.set(0, -60, 0);
     controls.maxPolarAngle = Math.PI / 2 + 0.04;
     controlsRef.current = controls;
 
@@ -170,137 +169,100 @@ export default function Viewport3D({
     const motionPlanner = new MotionPlanner();
     motionPlannerRef.current = motionPlanner;
 
-    // ================= Studio Lighting Rig =================
-    // Soft ambient fill
-    const ambientLight = new THREE.AmbientLight(0xffffff, isLight ? 0.9 : 0.65);
+    // ================= Studio Lighting Rig (KeyShot / CAD Studio Quality) =================
+    // Soft balanced ambient fill
+    const ambientLight = new THREE.AmbientLight(0xffffff, isLight ? 0.42 : 0.32);
     scene.add(ambientLight);
 
     const hemiLight = new THREE.HemisphereLight(
-      isLight ? 0xe2e8f0 : 0x1e293b,
+      isLight ? 0xffffff : 0x334155,
       isLight ? 0x94a3b8 : 0x0f172a,
-      isLight ? 0.95 : 0.65
+      isLight ? 0.55 : 0.40
     );
     scene.add(hemiLight);
 
-    // Overhead Industrial Fluorescent 1 (Ceiling Bay Key Light)
-    const rectLight1 = new THREE.RectAreaLight(isLight ? 0xfff8ee : 0xfffaed, 8.5, 340, 40);
-    rectLight1.position.set(0, 650, -150);
-    rectLight1.rotation.x = -Math.PI / 2;
-    scene.add(rectLight1);
-
-    // Overhead Industrial Fluorescent 2 (Ceiling Bay Secondary)
-    const rectLight2 = new THREE.RectAreaLight(isLight ? 0xedf2ff : 0xe0e7ff, 6.5, 340, 40);
-    rectLight2.position.set(0, 650, 250);
-    rectLight2.rotation.x = -Math.PI / 2;
-    scene.add(rectLight2);
-
-    // High-Precision Directional Key Light with Soft Contact Shadows
-    const keyLight = new THREE.DirectionalLight(isLight ? 0xfff5e6 : 0xffebd6, isLight ? 2.2 : 1.7);
-    keyLight.position.set(700, 1100, 800);
+    // High-Precision Directional Key Light with 4K Soft Contact Shadows
+    const keyLight = new THREE.DirectionalLight(isLight ? 0xffffff : 0xffedd5, isLight ? 2.2 : 1.7);
+    keyLight.position.set(850, 1300, 900);
     keyLight.castShadow = true;
-    keyLight.shadow.mapSize.width = 2048;
-    keyLight.shadow.mapSize.height = 2048;
+    keyLight.shadow.mapSize.width = 4096;
+    keyLight.shadow.mapSize.height = 4096;
     keyLight.shadow.camera.near = 150;
-    keyLight.shadow.camera.far = 3200;
-    keyLight.shadow.camera.left = -750;
-    keyLight.shadow.camera.right = 750;
-    keyLight.shadow.camera.top = 750;
-    keyLight.shadow.camera.bottom = -750;
-    keyLight.shadow.bias = -0.0004;
+    keyLight.shadow.camera.far = 3500;
+    keyLight.shadow.camera.left = -850;
+    keyLight.shadow.camera.right = 850;
+    keyLight.shadow.camera.top = 850;
+    keyLight.shadow.camera.bottom = -850;
+    keyLight.shadow.bias = -0.0001;
     keyLight.shadow.radius = 2.0;
     scene.add(keyLight);
 
+    // Soft Fill Light from opposite quadrant for balanced illumination
+    const fillLight = new THREE.DirectionalLight(isLight ? 0xe2e8f0 : 0x475569, isLight ? 0.75 : 0.55);
+    fillLight.position.set(-800, 700, 600);
+    scene.add(fillLight);
+
+    // Overhead Studio Strip Light for crisp specular highlights along horizontal rails
+    const rectLight1 = new THREE.RectAreaLight(0xffffff, isLight ? 4.5 : 3.5, 450, 60);
+    rectLight1.position.set(0, 750, -50);
+    rectLight1.rotation.x = -Math.PI / 2;
+    scene.add(rectLight1);
+
+    // Front Grazing Strip Light: Long continuous specular reflection along linear rails & ballscrews
+    const rectLight2 = new THREE.RectAreaLight(0xffffff, isLight ? 3.8 : 2.8, 650, 50);
+    rectLight2.position.set(0, 520, 320);
+    rectLight2.rotation.x = -Math.PI / 3;
+    scene.add(rectLight2);
+
     // Work Lamp SpotLight: Focused directly onto cutter & workpiece
-    const workLamp = new THREE.SpotLight(0xfffbeb, 4.2, 1200, Math.PI / 5, 0.35, 1.2);
-    workLamp.position.set(120, 280, 240);
+    const workLamp = new THREE.SpotLight(0xfffbeb, isLight ? 2.5 : 2.0, 1400, Math.PI / 5, 0.35, 1.2);
+    workLamp.position.set(120, 320, 260);
     workLamp.target.position.copy(TABLE_SURFACE_POS);
+    workLamp.castShadow = true;
+    workLamp.shadow.mapSize.width = 1024;
+    workLamp.shadow.mapSize.height = 1024;
+    workLamp.shadow.bias = -0.0003;
     scene.add(workLamp);
     scene.add(workLamp.target);
 
-    // Silhouette Rim Light
-    const rimLight = new THREE.DirectionalLight(isLight ? 0xc8d6e5 : 0x475569, isLight ? 1.3 : 1.0);
-    rimLight.position.set(0, 800, -850);
+    // Silhouette Rim Light: Edge glints on vertical uprights & enclosure chamfers
+    const rimLight = new THREE.DirectionalLight(isLight ? 0xffffff : 0x64748b, isLight ? 1.4 : 1.0);
+    rimLight.position.set(0, 900, -950);
     scene.add(rimLight);
 
-    // ================= Photorealistic Epoxy Floor & Shop Boundary =================
-    const floorGeo = new THREE.PlaneGeometry(3200, 3200);
-    const floorTex = proceduralTextures.getEpoxyFloorTexture(1024, isLight);
-    const floorMat = new THREE.MeshPhysicalMaterial({
-      map: floorTex,
-      roughness: 0.28,
-      metalness: 0.08,
-      clearcoat: 0.65,
-      clearcoatRoughness: 0.15,
-      envMapIntensity: 1.4
-    });
+    // ================= Seamless CAD Studio Ground & Diffuse Contact Shadow =================
+    // Shadow catcher material: receives real-time 4K PCF soft shadows seamlessly on studio gradient backdrop
+    const floorGeo = new THREE.PlaneGeometry(5000, 5000);
+    const floorMat = new THREE.ShadowMaterial({ opacity: isLight ? 0.35 : 0.55 });
+    const MACHINE_FLOOR_Y = -510.0; // Exact bottom of leveling feet pads resting on workshop floor
     const floor = new THREE.Mesh(floorGeo, floorMat);
     floor.rotation.x = -Math.PI / 2;
-    floor.position.y = -420;
+    floor.position.y = MACHINE_FLOOR_Y;
     floor.receiveShadow = true;
     scene.add(floor);
 
-    // Contact Shadow Disc Under Machine Base
-    const shadowGeo = new THREE.PlaneGeometry(1600, 1600);
-    const shadowTex = proceduralTextures.getContactShadowTexture(512);
+    // Soft Diffuse Ground Contact Shadow directly beneath machine chassis & feet
+    const shadowGeo = new THREE.PlaneGeometry(1500, 1500);
+    const shadowTex = proceduralTextures.getSoftStudioContactShadow(1024);
     const shadowMat = new THREE.MeshBasicMaterial({
       map: shadowTex,
       transparent: true,
-      opacity: 0.75,
+      opacity: 0.85,
       depthWrite: false
     });
     const shadowMesh = new THREE.Mesh(shadowGeo, shadowMat);
     shadowMesh.rotation.x = -Math.PI / 2;
-    shadowMesh.position.set(0, -419.8, 0);
+    shadowMesh.position.set(0, MACHINE_FLOOR_Y + 0.1, 0);
     scene.add(shadowMesh);
 
-    // Safety Hazard Perimeter Stripe around CNC footprint
-    const hazardTex = proceduralTextures.getHazardStripeTexture(512, 64);
-    const hazardMat = new THREE.MeshBasicMaterial({ map: hazardTex });
-    
-    const tapeThickness = 28;
-    const tapeW = 1200;
-    const tapeL = 1300;
-
-    const tapeNorth = new THREE.Mesh(new THREE.PlaneGeometry(tapeW, tapeThickness), hazardMat);
-    tapeNorth.rotation.x = -Math.PI / 2;
-    tapeNorth.position.set(0, -419.5, tapeL / 2);
-    scene.add(tapeNorth);
-
-    const tapeSouth = new THREE.Mesh(new THREE.PlaneGeometry(tapeW, tapeThickness), hazardMat);
-    tapeSouth.rotation.x = -Math.PI / 2;
-    tapeSouth.position.set(0, -419.5, -tapeL / 2);
-    scene.add(tapeSouth);
-
-    const tapeWest = new THREE.Mesh(new THREE.PlaneGeometry(tapeThickness, tapeL), hazardMat);
-    tapeWest.rotation.x = -Math.PI / 2;
-    tapeWest.position.set(-tapeW / 2, -419.5, 0);
-    scene.add(tapeWest);
-
-    const tapeEast = new THREE.Mesh(new THREE.PlaneGeometry(tapeThickness, tapeL), hazardMat);
-    tapeEast.rotation.x = -Math.PI / 2;
-    tapeEast.position.set(tapeW / 2, -419.5, 0);
-    scene.add(tapeEast);
-
-    // Anti-Fatigue Operator Floor Mat in front of CNC
-    const matGeo = new THREE.PlaneGeometry(750, 360);
-    const matFloorMat = new THREE.MeshPhysicalMaterial({
-      color: 0x1e293b,
-      roughness: 0.88,
-      metalness: 0.02
-    });
-    const antiFatigueMat = new THREE.Mesh(matGeo, matFloorMat);
-    antiFatigueMat.rotation.x = -Math.PI / 2;
-    antiFatigueMat.position.set(0, -419.2, tapeL / 2 + 200);
-    antiFatigueMat.receiveShadow = true;
-    scene.add(antiFatigueMat);
-
-    // Subtle Grid Helper
+    // Subtle CAD Alignment Grid
     const gridColor1 = isLight ? 0x94a3b8 : 0x334155;
     const gridColor2 = isLight ? 0xcbd5e1 : 0x1e293b;
     const grid = new THREE.GridHelper(3200, 64, gridColor1, gridColor2);
-    grid.position.y = -419.0;
+    grid.position.y = MACHINE_FLOOR_Y + 0.5;
     grid.material.transparent = true;
-    grid.material.opacity = 0.22;
+    grid.material.opacity = 0.05;
+    grid.visible = false; // Kept clean studio ground matching reference render
     scene.add(grid);
     gridRef.current = grid;
 
@@ -311,6 +273,7 @@ export default function Viewport3D({
 
     const enclosureGroup = new THREE.Group();
     const cornerJointsGroup = new THREE.Group();
+    const levelingFeetGroup = new THREE.Group();
     const gantryGroup = new THREE.Group();
     const tableGroup = new THREE.Group();
     const spindleGroup = new THREE.Group();
@@ -323,16 +286,17 @@ export default function Viewport3D({
 
     machineRoot.add(enclosureGroup);
     machineRoot.add(cornerJointsGroup);
+    machineRoot.add(levelingFeetGroup);
     machineRoot.add(tableGroup);
     machineRoot.add(gantryGroup);
-    machineRoot.add(printerHeadGroup);
+    gantryGroup.add(printerHeadGroup); // Attached to gantry crossbeam so it moves with gantry
     gantryGroup.add(spindleGroup);
     spindleGroup.add(toolGroup);
 
     enclosureGroupRef.current = enclosureGroup;
     cornerJointsGroupRef.current = cornerJointsGroup;
     printerHeadGroupRef.current = printerHeadGroup;
-    printerHeadGroup.visible = false; // 3D printer head disabled: ONLY CNC WORKS
+    printerHeadGroup.visible = true; // 100% visible on machine model matching CAD render
     gantryGroupRef.current = gantryGroup;
     tableGroupRef.current = tableGroup;
     spindleGroupRef.current = spindleGroup;
@@ -395,7 +359,7 @@ export default function Viewport3D({
 
 
     // Load Blender-Grade CAD Assemblies with Procedural PBR Textures
-    loadMachineModels(machineRoot, enclosureGroup, cornerJointsGroup, gantryGroup, tableGroup, spindleGroup, toolGroup, printerHeadGroup, theme);
+    loadMachineModels(machineRoot, enclosureGroup, cornerJointsGroup, levelingFeetGroup, gantryGroup, tableGroup, spindleGroup, toolGroup, printerHeadGroup, theme);
 
     // ================= Animation Loop =================
     let animId;
@@ -484,6 +448,7 @@ export default function Viewport3D({
       if (!container || !renderer || !camera) return;
       const w = container.clientWidth;
       const h = container.clientHeight;
+      if (w === 0 || h === 0) return;
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
       renderer.setSize(w, h);
@@ -492,10 +457,13 @@ export default function Viewport3D({
       }
     };
     window.addEventListener('resize', handleResize);
+    const resizeObserver = new ResizeObserver(handleResize);
+    resizeObserver.observe(container);
 
     return () => {
       cancelAnimationFrame(animId);
       window.removeEventListener('resize', handleResize);
+      resizeObserver.disconnect();
       if (renderer.domElement && container.contains(renderer.domElement)) {
         container.removeChild(renderer.domElement);
       }
@@ -511,16 +479,11 @@ export default function Viewport3D({
   useEffect(() => {
     if (!sceneRef.current || !rendererRef.current) return;
     const isLight = theme === 'light';
-    sceneRef.current.background = new THREE.Color(isLight ? 0xe2e8f0 : 0x070b12);
-    if (sceneRef.current.fog) {
-      sceneRef.current.fog.color.setHex(isLight ? 0xe2e8f0 : 0x070b12);
-    }
+    const backdrop = proceduralTextures.getCADStudioBackdropTexture(1024, isLight);
+    sceneRef.current.background = backdrop;
     rendererRef.current.toneMappingExposure = isLight ? 1.25 : 1.15;
     if (workshopEnvRef.current) {
       sceneRef.current.environment = workshopEnvRef.current.generate(isLight);
-    }
-    if (gridRef.current) {
-      gridRef.current.material.color.setHex(isLight ? 0x94a3b8 : 0x334155);
     }
   }, [theme]);
 
@@ -541,44 +504,165 @@ export default function Viewport3D({
   }, [qualityTier, materialEngine]);
 
   // Load Machine Subassemblies with Blender-Grade Procedural PBR Textures
-  const loadMachineModels = (root, enclosure, cornerJointsGroup, gantry, table, spindle, tool, printerHeadGroup, currentTheme) => {
+  const loadMachineModels = (root, enclosure, cornerJointsGroup, levelingFeetGroup, gantry, table, spindle, tool, printerHeadGroup, currentTheme) => {
     const loader = new GLTFLoader();
     setModelLoading(true);
 
-    // 1. Frame Base: Heavy Cast Slate / Cast Iron with Perlin Bump Map
-    const castIronBump = proceduralTextures.getCastIronBump(512);
-    const frameMaterial = new THREE.MeshPhysicalMaterial({
-      color: 0x334155,       // Cast machine base
-      bumpMap: castIronBump,
-      bumpScale: 0.85,
-      metalness: 0.58,
-      roughness: 0.40,
-      clearcoat: 0.35,
-      clearcoatRoughness: 0.25,
+    // =========================================================================
+    // Authentic Industrial PBR Mechanical Materials Suite
+    // Replaces flat/cheap solid colors with realistic machined surface finishes
+    // =========================================================================
+
+    // 1. Extruded 6061-T6 Structural Aluminum Beams (Longitudinal Hairline Grain)
+    const hairlineExtrusionNormal = proceduralTextures.getExtrusionHairlineNormal(512);
+    const frameExtrusionMaterial = new THREE.MeshPhysicalMaterial({
+      color: 0xd0dce8,                  // Natural clear satin anodized aluminum
+      normalMap: hairlineExtrusionNormal,
+      normalScale: new THREE.Vector2(0.35, 0.35),
+      metalness: 0.90,
+      roughness: 0.18,
+      clearcoat: 0.65,
+      clearcoatRoughness: 0.08,
+      envMapIntensity: 1.8,
+      side: THREE.DoubleSide
+    });
+
+    // 2. Hardened Ground Bearing Steel (SUJ2 / 52100) - Linear Rails & Leadscrews
+    // Mirror-ground finish with razor-sharp specular reflection glints
+    const mirrorRailNormal = proceduralTextures.getMirrorRailSteelNormal(512);
+    const groundRailSteelMaterial = new THREE.MeshPhysicalMaterial({
+      color: 0xf1f5f9,                  // Mirror chrome / bright bearing steel
+      normalMap: mirrorRailNormal,
+      normalScale: new THREE.Vector2(0.20, 0.20),
+      metalness: 0.98,
+      roughness: 0.04,
+      clearcoat: 0.95,
+      clearcoatRoughness: 0.02,
+      envMapIntensity: 2.8,
+      side: THREE.DoubleSide
+    });
+
+    // 3. Spindle Mount: Billet 7075-T6 CNC-Milled Clamp
+    const brushedNormal = proceduralTextures.getBrushedMetalNormal(512);
+    const spindleClampBilletMaterial = new THREE.MeshPhysicalMaterial({
+      color: 0xe2e8f0,                  // Milled aerospace billet
+      normalMap: brushedNormal,
+      normalScale: new THREE.Vector2(0.25, 0.25),
+      metalness: 0.92,
+      roughness: 0.14,
+      clearcoat: 0.85,
+      clearcoatRoughness: 0.06,
+      envMapIntensity: 2.0,
+      side: THREE.DoubleSide
+    });
+
+    // 4. Spindle Cylindrical Motor Body: Turned Stainless Steel Barrel
+    const spindleMotorCylinderMaterial = new THREE.MeshPhysicalMaterial({
+      color: 0xf8fafc,                  // Polished stainless steel spindle body
+      normalMap: mirrorRailNormal,
+      normalScale: new THREE.Vector2(0.15, 0.15),
+      metalness: 0.96,
+      roughness: 0.06,
+      clearcoat: 0.95,
+      clearcoatRoughness: 0.03,
+      envMapIntensity: 2.5,
+      side: THREE.DoubleSide
+    });
+
+    // 5. T-Slot Machine Bed Table: Precision Ground Cast Tooling Plate
+    const groundTableNormal = proceduralTextures.getGroundSteelNormal(512);
+    const tablePrecisionBedMaterial = new THREE.MeshPhysicalMaterial({
+      color: 0x1e293b,                  // Dark precision ground tool steel bed
+      normalMap: groundTableNormal,
+      normalScale: new THREE.Vector2(0.45, 0.45),
+      metalness: 0.85,
+      roughness: 0.20,
+      clearcoat: 0.45,
+      clearcoatRoughness: 0.12,
       envMapIntensity: 1.6,
       side: THREE.DoubleSide
     });
 
-    // 2. Enclosure Glass: Polycarbonate Safety Glass with Technical CAD Clarity & Subtle Reflections
-    const enclosureGlassMaterial = new THREE.MeshPhysicalMaterial({
-      color: 0xf1f5f9,
-      transmission: 0.94,
-      opacity: 0.40,
-      transparent: true,
-      roughness: 0.05,
-      ior: 1.49,             // Polycarbonate IOR
-      thickness: 4.0,        // 4mm physical safety glass
-      attenuationColor: new THREE.Color(0.92, 0.96, 0.99),
-      attenuationDistance: 50.0,
-      clearcoat: 1.0,
-      clearcoatRoughness: 0.03,
+    // 6. Corner Joint Brackets: Bead-Blasted Satin Anodized 6061 Billet
+    const beadBlastNormal = proceduralTextures.getAnodizedBeadBlastNormal(512);
+    const cornerJointsBlueMaterial = new THREE.MeshPhysicalMaterial({
+      color: 0x2563eb,                  // Rich anodized cobalt blue with satin sheen
+      normalMap: beadBlastNormal,
+      normalScale: new THREE.Vector2(0.35, 0.35),
+      metalness: 0.86,
+      roughness: 0.22,
+      clearcoat: 0.85,
+      clearcoatRoughness: 0.08,
       envMapIntensity: 2.2,
-      depthWrite: false,
       side: THREE.DoubleSide
     });
 
-    // 3. Enclosure Solid: Clean Sheet Metal Powdercoat
+    const cornerJointsAluMaterial = new THREE.MeshPhysicalMaterial({
+      color: 0xdbeafe,                  // Clear satin anodized aluminum
+      normalMap: beadBlastNormal,
+      normalScale: new THREE.Vector2(0.30, 0.30),
+      metalness: 0.90,
+      roughness: 0.18,
+      clearcoat: 0.75,
+      clearcoatRoughness: 0.08,
+      envMapIntensity: 2.0,
+      side: THREE.DoubleSide
+    });
+
+    cornerMaterialsRef.current = {
+      blue: cornerJointsBlueMaterial,
+      aluminum: cornerJointsAluMaterial
+    };
+    const cornerJointsMaterial = cornerColor === 'aluminum' ? cornerJointsAluMaterial : cornerJointsBlueMaterial;
+
+    // 7. Base Mounts, Posts & Couplers: Dark Industrial Phosphate/Powdercoat Metal
     const powdercoatBump = proceduralTextures.getPowdercoatBump(512);
+    const frameMountsMaterial = new THREE.MeshPhysicalMaterial({
+      color: 0x334155,                  // Dark graphite industrial metal
+      bumpMap: powdercoatBump,
+      bumpScale: 0.35,
+      metalness: 0.80,
+      roughness: 0.28,
+      clearcoat: 0.45,
+      envMapIntensity: 1.5,
+      side: THREE.DoubleSide
+    });
+
+    // 8. Leveling Feet: Heavy-Duty Industrial Dampening Polyurethane Fluted Pads
+    const levelingFeetMaterial = new THREE.MeshPhysicalMaterial({
+      color: 0x18181b,                  // Matte black industrial elastomer
+      roughness: 0.70,
+      metalness: 0.10,
+      clearcoat: 0.20,
+      envMapIntensity: 1.0,
+      side: THREE.DoubleSide
+    });
+
+    // 9. Tool: Mirror-Polished Tungsten Carbide Solid End Mill
+    const toolMaterial = new THREE.MeshPhysicalMaterial({
+      color: 0xffffff,
+      metalness: 0.99,
+      roughness: 0.02,
+      clearcoat: 1.0,
+      clearcoatRoughness: 0.02,
+      envMapIntensity: 2.8,
+      side: THREE.DoubleSide
+    });
+
+    // 10. Enclosure Glass: Crystal-Clear Polycarbonate Safety Acrylic
+    const enclosureGlassMaterial = new THREE.MeshPhysicalMaterial({
+      color: 0xf8fafc,
+      transparent: true,
+      opacity: 0.035,
+      roughness: 0.01,
+      metalness: 0.05,
+      clearcoat: 1.0,
+      clearcoatRoughness: 0.02,
+      envMapIntensity: 1.8,
+      depthWrite: false,
+      side: THREE.FrontSide
+    });
+
     const enclosureSolidMaterial = new THREE.MeshPhysicalMaterial({
       color: 0x64748b,
       bumpMap: powdercoatBump,
@@ -595,91 +679,20 @@ export default function Viewport3D({
       solid: enclosureSolidMaterial
     };
 
-    // 4. Gantry: Anodized Aerospace Aluminum with Brushed Grain Normal Map
-    const brushedNormal = proceduralTextures.getBrushedMetalNormal(512);
-    const gantryMaterial = new THREE.MeshPhysicalMaterial({
-      color: 0xdbe4ee,
+    // 11. Rear 3D Carriage on Gantry Rail
+    const printerHeadMaterial = new THREE.MeshPhysicalMaterial({
+      color: 0x1e293b,
       normalMap: brushedNormal,
-      normalScale: new THREE.Vector2(0.35, 0.35),
-      metalness: 0.90,
-      roughness: 0.16,
-      clearcoat: 0.40,
-      clearcoatRoughness: 0.12,
-      envMapIntensity: 2.2,
-      side: THREE.DoubleSide
-    });
-
-    // 5. Table: Precision Ground Tool Steel with Cross-Hatch Grinding Normal Map
-    const groundNormal = proceduralTextures.getGroundSteelNormal(512);
-    const tableMaterial = new THREE.MeshPhysicalMaterial({
-      color: 0x94a3b8,
-      normalMap: groundNormal,
-      normalScale: new THREE.Vector2(0.5, 0.5),
-      metalness: 0.94,
-      roughness: 0.16,
-      clearcoat: 0.50,
-      clearcoatRoughness: 0.10,
-      envMapIntensity: 2.0,
-      side: THREE.DoubleSide
-    });
-
-    // 6. Spindle Housing & Motor Carriage: Precision Billet Aluminium in Pure White-Silver Finish
-    const spindleMaterial = new THREE.MeshPhysicalMaterial({
-      color: 0xf8fafc,                  // Pure white aluminium / brilliant satin silver
-      normalMap: brushedNormal,
-      normalScale: new THREE.Vector2(0.35, 0.35),
-      metalness: 0.92,                  // High metallic luster of 6061-T6 aerospace aluminum
-      roughness: 0.14,                  // Fine CNC-milled surface
-      clearcoat: 0.85,                  // Clear protective anodize sheen
-      clearcoatRoughness: 0.08,
-      envMapIntensity: 2.6,             // Crisp HDRI workshop reflections
-      side: THREE.DoubleSide
-    });
-
-    // 7. Tool: Mirror-Polished Tungsten Carbide
-    const toolMaterial = new THREE.MeshPhysicalMaterial({
-      color: 0xf8fafc,
-      metalness: 0.98,
-      roughness: 0.04,
-      clearcoat: 0.90,
-      clearcoatRoughness: 0.04,
-      envMapIntensity: 2.8,
-      side: THREE.DoubleSide
-    });
-
-    // 8. Base Corner Joint Blocks: Royal Blue Anodized Aluminum / Satin Aluminium
-    const cornerJointsBlueMaterial = new THREE.MeshPhysicalMaterial({
-      color: 0x1d4ed8,                  // Deep Royal / Cobalt Blue anodized (exact match to user CAD render)
-      bumpMap: powdercoatBump,
-      bumpScale: 0.25,
-      metalness: 0.70,
-      roughness: 0.24,
-      clearcoat: 0.65,
-      clearcoatRoughness: 0.10,
-      envMapIntensity: 2.0,
-      side: THREE.DoubleSide
-    });
-
-    const cornerJointsAluMaterial = new THREE.MeshPhysicalMaterial({
-      color: 0xdbe4ee,                  // Clear Anodized Satin Aluminium
-      bumpMap: powdercoatBump,
-      bumpScale: 0.20,
+      normalScale: new THREE.Vector2(0.25, 0.25),
       metalness: 0.88,
-      roughness: 0.18,
-      clearcoat: 0.70,
-      clearcoatRoughness: 0.10,
-      envMapIntensity: 2.2,
+      roughness: 0.20,
+      clearcoat: 0.50,
+      envMapIntensity: 1.6,
       side: THREE.DoubleSide
     });
 
-    cornerMaterialsRef.current = {
-      blue: cornerJointsBlueMaterial,
-      aluminum: cornerJointsAluMaterial
-    };
-
-    const cornerJointsMaterial = cornerColor === 'aluminum' ? cornerJointsAluMaterial : cornerJointsBlueMaterial;
-
-    const applyMaterial = (object, mat, castShadow = true) => {
+    // Semantic Multi-Material Dispatcher
+    const applySemanticMaterials = (object, defaultMat, castShadow = true) => {
       object.traverse(child => {
         if (child.isMesh) {
           if (child.geometry.attributes.color) {
@@ -695,15 +708,39 @@ export default function Viewport3D({
             child.geometry.computeVertexNormals();
           }
 
+          const name = (child.name || '').toLowerCase();
+          let mat = defaultMat;
+
+          if (name.includes('rail') || name.includes('screw') || name.includes('ballscrew')) {
+            mat = groundRailSteelMaterial;
+          } else if (name.includes('spindle_motor')) {
+            mat = spindleMotorCylinderMaterial;
+          } else if (name.includes('spindle_clamp')) {
+            mat = spindleClampBilletMaterial;
+          } else if (name.includes('table_bed')) {
+            mat = tablePrecisionBedMaterial;
+          } else if (name.includes('frame_arch') || name.includes('frame_extrusions')) {
+            mat = frameExtrusionMaterial;
+          } else if (name.includes('frame_bed') || name.includes('frame_mounts')) {
+            mat = frameMountsMaterial;
+          } else if (name.includes('corner_joint')) {
+            mat = cornerJointsMaterial;
+          } else if (name.includes('tool_carbide')) {
+            mat = toolMaterial;
+          } else if (name.includes('leveling_foot')) {
+            mat = levelingFeetMaterial;
+          } else if (name.includes('enclosure')) {
+            mat = enclosureGlassMaterial;
+          }
+
           child.material = mat;
           child.castShadow = castShadow;
-          child.receiveShadow = false;
+          child.receiveShadow = true;
         }
       });
     };
 
     // Collet Centerline Offset in MACHINE_CENTER coordinates:
-    // Tool center CAD: (596.34, 1504.66, 1959.97), MACHINE_CENTER: (804.5, 1384.77, 1742.33)
     const TOOL_COLLET_OFFSET = new THREE.Vector3(-208.16, 0, 217.64);
     tool.position.copy(TOOL_COLLET_OFFSET);
 
@@ -711,23 +748,23 @@ export default function Viewport3D({
       return new Promise((resolve) => {
         loader.load(url, (gltf) => {
           const model = gltf.scene;
-          applyMaterial(model, mat, castShadow);
+          applySemanticMaterials(model, mat, castShadow);
           model.position.sub(MACHINE_CENTER);
           if (localOffset) {
             model.position.sub(localOffset);
           }
 
-          // Technical CAD edge outlines for enclosure acrylic panels matching user render
+          // Technical CAD edge outlines for enclosure acrylic panels
           if (url.includes('enclosure.glb')) {
             model.traverse(child => {
               if (child.isMesh) {
                 try {
-                  const edgeGeo = new THREE.EdgesGeometry(child.geometry, 20);
+                  const edgeGeo = new THREE.EdgesGeometry(child.geometry, 28);
                   const edgeMat = new THREE.LineBasicMaterial({
                     color: 0x334155,
                     linewidth: 1.5,
                     transparent: true,
-                    opacity: 0.65
+                    opacity: 0.75
                   });
                   const edges = new THREE.LineSegments(edgeGeo, edgeMat);
                   child.add(edges);
@@ -748,17 +785,18 @@ export default function Viewport3D({
     };
 
     Promise.all([
-      loadPart('/models/frame_base.glb', root, frameMaterial, true),
+      loadPart('/models/frame_base.glb', root, frameExtrusionMaterial, true),
+      loadPart('/models/leveling_feet.glb', levelingFeetGroup, levelingFeetMaterial, true),
       loadPart('/models/corner_joints.glb', cornerJointsGroup, cornerJointsMaterial, true),
-      loadPart('/models/enclosure.glb', enclosure, enclosureSolidMaterial, true),
-      loadPart('/models/gantry_x.glb', gantry, gantryMaterial, true),
-      loadPart('/models/table.glb', table, tableMaterial, true),
-      loadPart('/models/spindle_z.glb', spindle, spindleMaterial, true),
+      loadPart('/models/enclosure.glb', enclosure, enclosureGlassMaterial, false),
+      loadPart('/models/gantry_x.glb', gantry, frameExtrusionMaterial, true),
+      loadPart('/models/table.glb', table, tablePrecisionBedMaterial, true),
+      loadPart('/models/spindle_z.glb', spindle, spindleClampBilletMaterial, true),
       loadPart('/models/tool.glb', tool, toolMaterial, true, TOOL_COLLET_OFFSET),
-      loadPart('/models/printer_head.glb', printerHeadGroup, gantryMaterial, true)
+      loadPart('/models/printer_head.glb', printerHeadGroup, printerHeadMaterial, true)
     ]).then(() => {
       enclosure.visible = enclosureMode !== 'hide';
-      if (printerHeadGroup) printerHeadGroup.visible = false; // Disabled: ONLY CNC WORKS
+      if (printerHeadGroup) printerHeadGroup.visible = true;
       setModelLoading(false);
       if (kinematics) {
         kinematics.applyTransform();
@@ -807,14 +845,52 @@ export default function Viewport3D({
       const edgeLine = new THREE.LineSegments(
         edges, 
         new THREE.LineBasicMaterial({ 
-          color: 0x475569, 
+          color: 0x64748b, 
           linewidth: 1.5,
           transparent: true,
-          opacity: 0.45
+          opacity: 0.55
         })
       );
       edgeLine.position.set(0, -stockConfig.height / 2, 0);
       group.add(edgeLine);
+
+      // 3D G54 Work Coordinate System (WCS) Origin Triad at Stock Top Corner
+      const g54Triad = new THREE.Group();
+      const triadLen = 32;
+      const arrowX = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 0, 0), triadLen, 0xef4444, 7, 3.5);
+      const arrowY = new THREE.ArrowHelper(new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 0, 0), triadLen, 0x10b981, 7, 3.5);
+      const arrowZ = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 0), triadLen, 0x3b82f6, 7, 3.5);
+      g54Triad.add(arrowX, arrowY, arrowZ);
+
+      // Origin Bullseye Target Ring
+      const ringGeo = new THREE.RingGeometry(1.2, 2.8, 16);
+      const ringMat = new THREE.MeshBasicMaterial({ color: 0x7c5cfc, side: THREE.DoubleSide });
+      const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+      ringMesh.rotation.x = -Math.PI / 2;
+      ringMesh.position.y = 0.2;
+      g54Triad.add(ringMesh);
+
+      g54Triad.position.set(-stockConfig.width / 2, 0.5, -stockConfig.length / 2);
+      group.add(g54Triad);
+
+      // Holographic Machine Travel Limits Bounding Cage (300 x 200 x 100mm)
+      const travelGeo = new THREE.BoxGeometry(320, 110, 220);
+      const travelEdges = new THREE.EdgesGeometry(travelGeo);
+      const travelLine = new THREE.LineSegments(
+        travelEdges,
+        new THREE.LineDashedMaterial({
+          color: 0x7c5cfc,
+          linewidth: 1,
+          scale: 1,
+          dashSize: 6,
+          gapSize: 6,
+          transparent: true,
+          opacity: 0.22
+        })
+      );
+      travelLine.computeLineDistances();
+      travelLine.position.set(0, 48, 0);
+      group.add(travelLine);
 
       setSurfaceRoughness(materialEngine.getSurfaceRoughness());
     }
@@ -920,7 +996,7 @@ export default function Viewport3D({
 
   // Cycle Enclosure Mode: HIDE -> GLASS -> SOLID -> HIDE
   const cycleEnclosureMode = () => {
-    const nextMode = enclosureMode === 'hide' ? 'glass' : enclosureMode === 'glass' ? 'solid' : 'hide';
+    const nextMode = enclosureMode === 'glass' ? 'hide' : enclosureMode === 'hide' ? 'solid' : 'glass';
     setEnclosureMode(nextMode);
 
     if (!enclosureGroupRef.current) return;
@@ -934,6 +1010,7 @@ export default function Viewport3D({
       enc.traverse(child => {
         if (child.isMesh) {
           child.material = mat;
+          child.castShadow = nextMode === 'solid';
         }
       });
     }
@@ -965,29 +1042,30 @@ export default function Viewport3D({
     const controls = controlsRef.current;
     if (!camera || !controls) return;
 
-    const target = new THREE.Vector3(10, -220, -100);
-    controls.target.copy(target);
-
     switch (view) {
       case 'iso':
-        camera.position.set(480, 360, 580);
+        controls.target.set(0, -60, 0);
+        camera.position.set(1060, 780, 1260);
         break;
       case 'top':
-        camera.position.set(10, 850, -100);
+        controls.target.set(0, -60, 0);
+        camera.position.set(0, 1900, 0);
         break;
       case 'front':
-        camera.position.set(10, -50, 720);
+        controls.target.set(0, -60, 0);
+        camera.position.set(0, -60, 1750);
         break;
       case 'right':
-        camera.position.set(720, -50, -100);
+        controls.target.set(0, -60, 0);
+        camera.position.set(1750, -60, 0);
         break;
       case 'fit':
-        camera.position.set(440, 300, 520);
-        controls.target.set(10, -220, -100);
+        controls.target.set(0, -60, 0);
+        camera.position.set(1060, 780, 1260);
         break;
       case 'part_zoom':
-        camera.position.set(120, -140, 480);
         controls.target.set(TABLE_SURFACE_POS.x, TABLE_SURFACE_POS.y + 15, 217.64);
+        camera.position.set(220, -50, 480);
         break;
       default:
         break;

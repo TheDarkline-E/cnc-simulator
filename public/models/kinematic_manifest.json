@@ -233,5 +233,66 @@
     ],
     "vertices": 731,
     "faces": 1458
+  },
+  "printer_head": {
+    "file": "printer_head.glb",
+    "solids": [
+      40
+    ],
+    "size_bytes": 37588,
+    "bounds_min": [
+      522.34,
+      1538.9,
+      1627.97
+    ],
+    "bounds_max": [
+      572.34,
+      1593.24,
+      1700.97
+    ],
+    "center": [
+      547.34,
+      1566.07,
+      1664.47
+    ],
+    "dimensions": [
+      50.0,
+      54.35,
+      73.0
+    ],
+    "vertices": 984,
+    "faces": 1968
+  },
+  "leveling_feet": {
+    "file": "leveling_feet.glb",
+    "solids": [
+      "star_pads_1",
+      "star_pads_2",
+      "star_pads_3",
+      "star_pads_4"
+    ],
+    "size_bytes": 48120,
+    "bounds_min": [
+      452.23,
+      875.0,
+      1414.01
+    ],
+    "bounds_max": [
+      1182.44,
+      905.0,
+      2144.01
+    ],
+    "center": [
+      817.34,
+      890.0,
+      1779.01
+    ],
+    "dimensions": [
+      730.21,
+      30.0,
+      730.0
+    ],
+    "vertices": 1040,
+    "faces": 2080
   }
 }

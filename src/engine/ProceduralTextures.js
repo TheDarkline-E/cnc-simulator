@@ -392,6 +392,276 @@ class ProceduralTextureFactory {
 
     return new THREE.CanvasTexture(canvas);
   }
+
+  /**
+   * 9. CAD Studio Radial Vignette Backdrop Texture
+   * Matches professional KeyShot / SolidWorks studio renders
+   */
+  getCADStudioBackdropTexture(size = 1024, isLight = true) {
+    const key = `cad_studio_backdrop_${size}_${isLight ? 'light' : 'dark'}`;
+    if (this.cache.has(key)) return this.cache.get(key);
+
+    const { canvas, ctx } = this.createCanvas(size, size);
+    const cx = size * 0.5;
+    const cy = size * 0.45;
+    const maxR = size * 0.72;
+
+    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, maxR);
+    if (isLight) {
+      grad.addColorStop(0.0, '#f8fafc');
+      grad.addColorStop(0.28, '#edf2f7');
+      grad.addColorStop(0.60, '#cbd5e1');
+      grad.addColorStop(1.0, '#94a3b8');
+    } else {
+      grad.addColorStop(0.0, '#1e293b');
+      grad.addColorStop(0.40, '#0f172a');
+      grad.addColorStop(0.75, '#090d16');
+      grad.addColorStop(1.0, '#030712');
+    }
+
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, size, size);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    this.cache.set(key, texture);
+    return texture;
+  }
+
+  /**
+   * 10. High-Quality Soft Diffuse Studio Contact Shadow
+   */
+  getSoftStudioContactShadow(size = 1024) {
+    const key = `soft_studio_contact_shadow_${size}`;
+    if (this.cache.has(key)) return this.cache.get(key);
+
+    const { canvas, ctx } = this.createCanvas(size, size);
+    ctx.clearRect(0, 0, size, size);
+
+    const cx = size * 0.5;
+    const cy = size * 0.5;
+
+    // Broad diffuse ambient occlusion footprint
+    const grad1 = ctx.createRadialGradient(cx, cy, 0, cx, cy, size * 0.42);
+    grad1.addColorStop(0.0, 'rgba(15, 23, 42, 0.75)');
+    grad1.addColorStop(0.3, 'rgba(15, 23, 42, 0.45)');
+    grad1.addColorStop(0.65, 'rgba(15, 23, 42, 0.15)');
+    grad1.addColorStop(1.0, 'rgba(15, 23, 42, 0.0)');
+
+    ctx.fillStyle = grad1;
+    ctx.beginPath();
+    ctx.arc(cx, cy, size * 0.45, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Dark core shadow directly beneath machine chassis
+    const grad2 = ctx.createRadialGradient(cx, cy, 0, cx, cy, size * 0.22);
+    grad2.addColorStop(0.0, 'rgba(5, 10, 20, 0.90)');
+    grad2.addColorStop(0.5, 'rgba(5, 10, 20, 0.40)');
+    grad2.addColorStop(1.0, 'rgba(5, 10, 20, 0.0)');
+
+    ctx.fillStyle = grad2;
+    ctx.beginPath();
+    ctx.arc(cx, cy, size * 0.25, 0, Math.PI * 2);
+    ctx.fill();
+
+    const texture = new THREE.CanvasTexture(canvas);
+    this.cache.set(key, texture);
+    return texture;
+  }
+
+  /**
+   * 11. Extruded Aluminum Hairline Normal Map
+   * Crisp longitudinal extrusion grain lines for 6061-T6 structural beams
+   */
+  getExtrusionHairlineNormal(size = 512) {
+    const key = `extrusion_hairline_${size}`;
+    if (this.cache.has(key)) return this.cache.get(key);
+
+    const { canvas, ctx } = this.createCanvas(size, size);
+    const imgData = ctx.createImageData(size, size);
+    const data = imgData.data;
+
+    // Longitudinal hairline extrusion striations along X
+    for (let y = 0; y < size; y++) {
+      // Periodic extrusion lines + micro-ridges
+      const primaryLine = Math.sin(y * 1.8) * 0.5 + 0.5;
+      const fineLine = Math.sin(y * 7.5 + this.noise2D(0, y * 0.2) * 2.0) * 0.5 + 0.5;
+      for (let x = 0; x < size; x++) {
+        const microNoise = (this.smoothNoise(x * 0.05, y * 0.8) - 0.5) * 0.2;
+        const bumpY = (primaryLine * 0.6 + fineLine * 0.4 + microNoise - 0.5) * 0.35;
+        const bumpX = (this.smoothNoise(x * 0.2, y * 0.02) - 0.5) * 0.08;
+
+        const nx = -bumpX * 1.5;
+        const ny = -bumpY * 1.8;
+        const nz = 1.0;
+        const len = Math.sqrt(nx * nx + ny * ny + nz * nz);
+
+        const idx = (y * size + x) * 4;
+        data[idx] = Math.floor(((nx / len) * 0.5 + 0.5) * 255);
+        data[idx + 1] = Math.floor(((ny / len) * 0.5 + 0.5) * 255);
+        data[idx + 2] = Math.floor(((nz / len) * 0.5 + 0.5) * 255);
+        data[idx + 3] = 255;
+      }
+    }
+    ctx.putImageData(imgData, 0, 0);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(6, 6);
+    this.cache.set(key, texture);
+    return texture;
+  }
+
+  /**
+   * 12. Mirror-Ground Linear Rail & Screw Steel Normal Map
+   * Ultra-fine parallel longitudinal grind tracks with near-mirror specular fidelity
+   */
+  getMirrorRailSteelNormal(size = 512) {
+    const key = `mirror_rail_steel_${size}`;
+    if (this.cache.has(key)) return this.cache.get(key);
+
+    const { canvas, ctx } = this.createCanvas(size, size);
+    const imgData = ctx.createImageData(size, size);
+    const data = imgData.data;
+
+    for (let y = 0; y < size; y++) {
+      const railGrind = Math.sin(y * 4.2) * 0.15 + (Math.sin(y * 14.0) * 0.06);
+      for (let x = 0; x < size; x++) {
+        const microChatter = (Math.random() - 0.5) * 0.025;
+        const ny = railGrind + microChatter;
+        const nx = (Math.random() - 0.5) * 0.015;
+        const nz = 1.0;
+        const len = Math.sqrt(nx * nx + ny * ny + nz * nz);
+
+        const idx = (y * size + x) * 4;
+        data[idx] = Math.floor(((nx / len) * 0.5 + 0.5) * 255);
+        data[idx + 1] = Math.floor(((ny / len) * 0.5 + 0.5) * 255);
+        data[idx + 2] = Math.floor(((nz / len) * 0.5 + 0.5) * 255);
+        data[idx + 3] = 255;
+      }
+    }
+    ctx.putImageData(imgData, 0, 0);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(12, 12);
+    this.cache.set(key, texture);
+    return texture;
+  }
+
+  /**
+   * 13. Wrinkle Black Powdercoat Normal Map
+   * Industrial crinkle / orange-peel stippling for NEMA stepper motor bodies
+   */
+  getWrinklePowdercoatNormal(size = 512) {
+    const key = `wrinkle_powdercoat_${size}`;
+    if (this.cache.has(key)) return this.cache.get(key);
+
+    const { canvas, ctx } = this.createCanvas(size, size);
+    const imgData = ctx.createImageData(size, size);
+    const data = imgData.data;
+
+    const scale = 36.0 / size;
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        // High frequency cellular crinkle noise
+        const n1 = this.fbm(x * scale, y * scale, 4, 0.65);
+        const n2 = this.noise2D(x * 0.35, y * 0.35) * 0.25;
+        const height = (n1 + n2) * 1.8;
+
+        const nx = (this.noise2D((x + 1) * scale, y * scale) - this.noise2D((x - 1) * scale, y * scale)) * 2.5;
+        const ny = (this.noise2D(x * scale, (y + 1) * scale) - this.noise2D(x * scale, (y - 1) * scale)) * 2.5;
+        const nz = 1.0;
+        const len = Math.sqrt(nx * nx + ny * ny + nz * nz);
+
+        const idx = (y * size + x) * 4;
+        data[idx] = Math.floor(((nx / len) * 0.5 + 0.5) * 255);
+        data[idx + 1] = Math.floor(((ny / len) * 0.5 + 0.5) * 255);
+        data[idx + 2] = Math.floor(((nz / len) * 0.5 + 0.5) * 255);
+        data[idx + 3] = 255;
+      }
+    }
+    ctx.putImageData(imgData, 0, 0);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(4, 4);
+    this.cache.set(key, texture);
+    return texture;
+  }
+
+  /**
+   * 14. Bead-Blasted Satin Anodized Normal Map
+   * Fine micro-pebble texture creating uniform diffuse metallic sheen on corner joints
+   */
+  getAnodizedBeadBlastNormal(size = 512) {
+    const key = `anodized_bead_blast_${size}`;
+    if (this.cache.has(key)) return this.cache.get(key);
+
+    const { canvas, ctx } = this.createCanvas(size, size);
+    const imgData = ctx.createImageData(size, size);
+    const data = imgData.data;
+
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        const nx = (Math.random() - 0.5) * 0.22;
+        const ny = (Math.random() - 0.5) * 0.22;
+        const nz = 1.0;
+        const len = Math.sqrt(nx * nx + ny * ny + nz * nz);
+
+        const idx = (y * size + x) * 4;
+        data[idx] = Math.floor(((nx / len) * 0.5 + 0.5) * 255);
+        data[idx + 1] = Math.floor(((ny / len) * 0.5 + 0.5) * 255);
+        data[idx + 2] = Math.floor(((nz / len) * 0.5 + 0.5) * 255);
+        data[idx + 3] = 255;
+      }
+    }
+    ctx.putImageData(imgData, 0, 0);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(8, 8);
+    this.cache.set(key, texture);
+    return texture;
+  }
+
+  /**
+   * 15. Face Milling Scallop Toolpath Texture
+   * Concentric trochoidal cutter swirl marks for machined workpiece surfaces
+   */
+  getFacingScallopTexture(size = 512) {
+    const key = `facing_scallop_${size}`;
+    if (this.cache.has(key)) return this.cache.get(key);
+
+    const { canvas, ctx } = this.createCanvas(size, size);
+    ctx.fillStyle = '#f8fafc';
+    ctx.fillRect(0, 0, size, size);
+
+    // Draw overlapping circular tool passes
+    ctx.lineWidth = 1.8;
+    const stepOver = 28;
+    const radius = 60;
+
+    for (let y = -radius; y < size + radius; y += stepOver) {
+      for (let x = -radius; x < size + radius; x += 18) {
+        ctx.strokeStyle = (x % 36 === 0) ? 'rgba(148, 163, 184, 0.35)' : 'rgba(203, 213, 225, 0.22)';
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(2, 2);
+    this.cache.set(key, texture);
+    return texture;
+  }
 }
 
 export const proceduralTextures = new ProceduralTextureFactory();

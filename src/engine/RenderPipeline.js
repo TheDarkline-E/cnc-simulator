@@ -13,10 +13,10 @@ import { FXAAShader } from 'three/examples/jsm/shaders/FXAAShader.js';
 const CinematicVignetteShader = {
   uniforms: {
     tDiffuse: { value: null },
-    vignetteOffset: { value: 1.05 },
-    vignetteDarkness: { value: 1.25 },
-    contrast: { value: 1.06 },
-    saturation: { value: 1.04 },
+    vignetteOffset: { value: 1.0 },
+    vignetteDarkness: { value: 0.65 },
+    contrast: { value: 1.05 },
+    saturation: { value: 1.06 },
   },
   vertexShader: `
     varying vec2 vUv;
@@ -99,9 +99,9 @@ export class RenderPipeline {
     // 3. Unreal Bloom Pass (selective specular bloom for metal gleams & LEDs)
     this.bloomPass = new UnrealBloomPass(
       new THREE.Vector2(this.width, this.height),
-      0.38,   // strength
-      0.55,   // radius
-      0.82    // threshold (only highlights above 0.82 bloom)
+      0.18,   // strength (subtle refined specular glow)
+      0.35,   // radius
+      0.94    // threshold (only highlights above 0.94 bloom)
     );
     this.composer.addPass(this.bloomPass);
 
